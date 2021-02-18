@@ -7,12 +7,32 @@
 using namespace etl::hal;
 using namespace etl;
 
-struct Promise
-{};
+namespace nes::ted {}
+
+struct Promise;
 
 struct Task
 {
 	using promise_type = Promise;
+	constexpr bool await_ready() const noexcept { return false; }
+	void await_suspend(std::coroutine_handle<> h);
+    void await_resume();
+};
+
+struct Promise
+{
+	auto initial_suspend() noexcept { return std::suspend_never{}; }
+	auto final_suspend() noexcept { return std::suspend_never{}; }
+	Task get_return_object() const noexcept;
+	void return_void();
+	void unhandled_exception() const noexcept {}
+
+	template<class Awaitable>
+	Awaitable await_transform(Awaitable expr)
+	{
+		//expr.then(m_handle); // Append my own execution at the end of the awaitable expression
+		return expr;
+	}
 };
 
 template<class T>
@@ -28,7 +48,6 @@ template<class T>
 struct TimedPromise
 {	
 	using Clock = std::chrono::steady_clock;
-	using promise_type = Promise;
 
 	Clock::time_point due;
 
@@ -65,6 +84,78 @@ public:
 	}
 };
 
+template<class Clock_>
+class TimeoutPromise;
+
+template<class Clock_>
+class AwaitableTimeout
+{
+public:
+	using time_point = Clock_::time_point;
+	using promise_type = TimeoutPromise<Clock_>;
+
+	AwaitableTimeout(time_point t) noexcept : m_t(t) {}
+
+	// Note: Instead of always shceduling the task, we could check here whether we passed the time already.
+	// However, periodic tasks are usually scheduled well in advance, so it's not very useful in practice.
+	constexpr bool await_ready() const noexcept { return false; }
+
+	// Awaiter interface
+	void await_suspend(std::coroutine_handle<> h) {
+		m_coHandle = h;
+		// Add h to the scheduler so it resume us;
+    }
+    void await_resume() {}
+	void then(std::coroutine_handle<> postOp) { m_post = postOp; }
+private:
+	time_point m_t;
+	std::coroutine_handle<> m_coHandle;
+	std::coroutine_handle<> m_post;
+};
+
+template<class Clock_>
+class TimeoutPromise
+{
+public:
+	using Clock = Clock_;
+	using time_point = Clock::time_point;
+
+	TimeoutPromise(time_point t)
+		: m_awaiter(t)
+	{}
+
+	// Promise interface
+	auto initial_suspend()
+	{
+		return std::suspend_always{};
+	}
+	auto final_suspend() { return std::suspend_never{}; }
+	void return_value() {}
+	AwaitableTimeout<Clock_> get_return_object() { return m_awaiter; }
+
+private:
+	AwaitableTimeout<Clock_> m_awaiter;
+};
+
+// suspend execution until the given time point is reached
+template<class Clock_>
+AwaitableTimeout<Clock_> asyncTimeout(std::chrono::time_point<Clock_> t);
+
+Task driveStepper()
+{
+	constexpr auto dt = std::chrono::microseconds(1000);
+	auto tNext = std::chrono::steady_clock::now();
+	for(;;)
+	{
+		tNext += dt;
+		co_await asyncTimeout(tNext);
+	}
+}
+// Async code to drive a stepper
+// dt = getMotorDt();
+// co_await asyncTimeout(lastTime + dt);
+// stepPulse();
+
 // G-Code parsing loop
 // {
 //		for(;;)
@@ -84,9 +175,12 @@ public:
 
 // motorControl();
 // {
-// 		co_await SetupMotors();
-//		res = co_await RunDiagnostics();
-//		if(res) for(;;) co_await StepMotors();
+// 		SetupMotors();
+//		res = RunDiagnostics();
+//		if(res)
+		// stepperX.run();
+		// stepperY.run();
+		// ...
 // }
 
 void setup() {
@@ -94,7 +188,7 @@ void setup() {
 	// Setup serial port
 	Serial.begin(115200);
 	// Start motor control
-	// motorControl();
+	// runSteppers();
 	// Start message processing
 	// executeGCode();
 }
