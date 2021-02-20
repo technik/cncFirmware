@@ -91,7 +91,7 @@ template<class Clock_>
 class AwaitableTimeout
 {
 public:
-	using time_point = Clock_::time_point;
+	using time_point = typename Clock_::time_point;
 	using promise_type = TimeoutPromise<Clock_>;
 
 	AwaitableTimeout(time_point t) noexcept : m_t(t) {}
@@ -118,7 +118,7 @@ class TimeoutPromise
 {
 public:
 	using Clock = Clock_;
-	using time_point = Clock::time_point;
+	using time_point = typename Clock::time_point;
 
 	TimeoutPromise(time_point t)
 		: m_awaiter(t)
@@ -201,3 +201,15 @@ void loop() {
   // - Consume data from the serial port. Interpret the G-Code and write ack to it
   TaskScheduler::Get().Continue();
 }
+
+#ifdef _WIN32
+
+int main()
+{
+	setup();
+	for(;;)
+		loop();
+	return 0;
+}
+
+#endif // WIN32
