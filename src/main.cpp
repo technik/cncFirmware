@@ -14,26 +14,54 @@ struct Promise;
 struct Task
 {
 	using promise_type = Promise;
+
+	Task(Promise& promise) : m_promise(promise) {}
+
 	constexpr bool await_ready() const noexcept { return false; }
-	void await_suspend(std::coroutine_handle<> h);
-    void await_resume();
+	void await_suspend(std::coroutine_handle<Promise> h);
+	void await_resume();
+
+	void then(std::coroutine_handle<> post);
+
+	Promise& m_promise;
 };
 
 struct Promise
 {
 	auto initial_suspend() noexcept { return std::suspend_never{}; }
 	auto final_suspend() noexcept { return std::suspend_never{}; }
-	Task get_return_object() const noexcept;
-	void return_void();
+	Task get_return_object() noexcept { return Task{ *this }; }
+	void return_void()
+	{
+		m_post.resume();
+	}
 	void unhandled_exception() const noexcept {}
 
 	template<class Awaitable>
 	Awaitable await_transform(Awaitable expr)
 	{
-		//expr.then(m_handle); // Append my own execution at the end of the awaitable expression
+		expr.then(m_handle); // Append my own execution at the end of the awaitable expression
 		return expr;
 	}
+
+	std::coroutine_handle<Promise> m_handle;
+	std::coroutine_handle<> m_post;
 };
+
+void Task::await_suspend(std::coroutine_handle<Promise> h)
+{
+	m_promise.m_handle = h;
+}
+
+void Task::await_resume()
+{
+	m_promise.m_handle.resume();
+}
+
+void Task::then(std::coroutine_handle<> post)
+{
+	m_promise.m_post = post;
+}
 
 template<class T>
 struct TimedPromise;
@@ -69,18 +97,18 @@ public:
 	static constexpr size_t kMaxRealTimeTasks = 16;
 	static constexpr size_t kMaxPriorityTasks = 8;
 	static constexpr size_t kMaxBackgroundTasks = 8;
-    // Task queues
-	FixedRingBuffer<Task, kMaxRealTimeTasks> 	realTimeQueue;
-	FixedRingBuffer<Task, kMaxPriorityTasks> 	priorityQueue;
-	FixedRingBuffer<Task, kMaxBackgroundTasks> 	backgroundQueue;
+	// Task queues
+	//FixedRingBuffer<Task, kMaxRealTimeTasks> 	realTimeQueue;
+	//FixedRingBuffer<Task, kMaxPriorityTasks> 	priorityQueue;
+	//FixedRingBuffer<Task, kMaxBackgroundTasks> 	backgroundQueue;
 
 	void Continue()
 	{
-		if(!realTimeQueue.empty())
+	/*	if(!realTimeQueue.empty())
 		{
 			realTimeQueue.pop_front();
 			return;
-		}
+		}*/
 	}
 };
 
@@ -104,8 +132,8 @@ public:
 	void await_suspend(std::coroutine_handle<> h) {
 		m_coHandle = h;
 		// Add h to the scheduler so it resume us;
-    }
-    void await_resume() {}
+	}
+	void await_resume() {}
 	void then(std::coroutine_handle<> postOp) { m_post = postOp; }
 private:
 	time_point m_t;
@@ -130,8 +158,9 @@ public:
 		return std::suspend_always{};
 	}
 	auto final_suspend() { return std::suspend_never{}; }
-	void return_value() {}
 	AwaitableTimeout<Clock_> get_return_object() { return m_awaiter; }
+
+	void return_void() {}
 
 private:
 	AwaitableTimeout<Clock_> m_awaiter;
@@ -139,7 +168,7 @@ private:
 
 // suspend execution until the given time point is reached
 template<class Clock_>
-AwaitableTimeout<Clock_> asyncTimeout(std::chrono::time_point<Clock_> t);
+AwaitableTimeout<Clock_> asyncTimeout(std::chrono::time_point<Clock_> t) { co_return; }
 
 Task driveStepper()
 {
