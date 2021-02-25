@@ -1,3 +1,5 @@
+// Disable unintentional include of time.h in WIN32, which redefines clock
+#define _INC_TIME
 #include <Arduino.h>
 #include <hal/gpio_pin.h>
 #include <staticRingBuffer.h>
@@ -33,9 +35,9 @@ struct StepperDriver
 		stepPin.setLow();
 	}
 
-	StepPin::Out stepPin;
-	DirPin::Out dirPin;
-	EnablePin::Out enablePin;
+	typename StepPin::Out stepPin;
+	typename DirPin::Out dirPin;
+	typename EnablePin::Out enablePin;
 };
 
 // Ramps 1.4 definitions
@@ -75,7 +77,7 @@ struct InputButton
 	void read()
 	{
 		m_state = (m_state<<1) & FullStateMask;
-		m_state |= m_pin;
+		m_state |= m_pin?1:0;
 	}
 	bool pressed() const { return m_state == CurStateMask; }
 	bool held() const { return m_state == FullStateMask; }
@@ -87,7 +89,7 @@ private:
 	static constexpr uint8_t FullStateMask = CurStateMask | LastStateMask;
 	// bit 0: current state; bit 1: past state
 	uint8_t m_state{};
-	Pin::In m_pin;
+	typename Pin::In m_pin;
 };
 
 template<int pinX, int pinY, class ButtonPin>
@@ -180,7 +182,7 @@ void loop() {
   // - Consume data from the serial port. Interpret the G-Code and write ack to it
 }
 
-#ifdef _WIN32
+#ifdef SITL
 
 int main()
 {
@@ -190,4 +192,4 @@ int main()
 	return 0;
 }
 
-#endif // WIN32
+#endif // SITL
