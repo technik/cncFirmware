@@ -3,6 +3,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <fstream>
 
 // Arduino mega pin definitions
 #define NUM_DIGITAL_PINS            70
@@ -73,9 +74,32 @@ static const uint8_t A15 = PIN_A15;
 struct SerialComm
 {
 	void begin(unsigned baudrate) {}
-	void write(unsigned x) { std::cout << x << "\n"; }
+	template<class T>
+	void print(T x) { std::cout << x; }
+	template<class T>
+	void println(T x) { std::cout << x << "\n"; }
+
+	void InitFromFile(const std::string& filePath)
+	{
+		m_file.open(filePath);
+	}
+
+	int available()
+	{
+		return (m_file.is_open() && !m_file.eof())? 1 : 0;
+	}
+
+	size_t readBytes(char* buffer, size_t length)
+	{
+		m_file.read(buffer, length);
+		std::cout << std::string(buffer, length);
+		return length;
+	}
 
 	static SerialComm com0;
+
+private:
+	std::ifstream m_file;
 };
 
 inline void delay(unsigned long ms)

@@ -50,26 +50,34 @@ XAxisStepper gMotorX;
 YAxisStepper gMotorY;
 ZAxisStepper gMotorZ;
 
+enum class Axis : uint8_t {
+	X, Y, Z
+};
+
 struct StepperController
 {
 	bool Finished();
 	bool Continue();
 
-	enum class Axis {
-		X, Y, Z
-	};
+	template<int axis> struct Axis {};
 
-	void setStepDir(bool sign);
+	template<int axis>
+	void move(int32_t steps);
+	template<int axis>
 	void resetPosition();
-	void configMicroStepping();
 
+private:
 	struct StepperState
 	{
 		duration stepPeriod;
 		int32_t pendingSteps;
 		int32_t position;
-	};
+	} motorState[3];
 };
+
+template<> struct StepperController::Axis<0> { auto& getMotor() { return gMotorX; } };
+template<> struct StepperController::Axis<1> { auto& getMotor() { return gMotorX; } };
+template<> struct StepperController::Axis<2> { auto& getMotor() { return gMotorX; } };
 
 template<class Pin>
 struct InputButton
@@ -149,14 +157,33 @@ void setup() {
 
 AnalogJoystick<A5, A10, Pin44> gLeftStick;
 
+etl::FixedRingBuffer<char,128> pendingMessage;
+
+void parseLine()
+{
+	Serial.println("ok");
+}
+
+void processGCode()
+{
+	if(Serial.available())
+	{
+		// Read characters one by one to minimize blocking time, and yield frequently to motor execution
+		char c;
+		Serial.readBytes(&c,1);
+		if (c == '\n')
+		{
+			parseLine();
+		}
+		else
+			pendingMessage.push_back(c);
+	}
+}
+
 void loop() {
 	
-	/*delay(1000);
-	Serial.print("X:");
-	Serial.print(gLeftStick.xAxis.m_pos);
-	Serial.print(" Y:");
-	Serial.println(gLeftStick.yAxis.m_pos);
-	*/
+	processGCode();
+	
 	if(gLeftStick.xAxis.m_pos < 60)
 	{
 		gLed.setHigh();
@@ -184,8 +211,10 @@ void loop() {
 
 #ifdef SITL
 
-int main()
+int main(int argc, char** argv)
 {
+	if (argc > 1)
+		Serial.InitFromFile(argv[1]);
 	setup();
 	for(;;)
 		loop();
