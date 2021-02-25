@@ -180,10 +180,8 @@ void processGCode()
 	}
 }
 
-void loop() {
-	
-	processGCode();
-	
+void loop()
+{	
 	if(gLeftStick.xAxis.m_pos < 60)
 	{
 		gLed.setHigh();
@@ -202,11 +200,12 @@ void loop() {
 	delay(1);
 	if(gEndStopMinX)
 		gMotorY.setDir(true);
-  // Consume work from the task queue
-  // Global work flow looks like:
-  // - Interrupt from hardware stops
-  // - Interrupt from motor control
-  // - Consume data from the serial port. Interpret the G-Code and write ack to it
+	// Consume work from the task queue
+	// Global work flow looks like:
+	// - Interrupt from hardware stops
+	// - Interrupt from motor control
+	// - Consume data from the serial port. Interpret the G-Code and write ack to it
+	processGCode();
 }
 
 #ifdef SITL
