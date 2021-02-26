@@ -3,7 +3,7 @@
 #include <Arduino.h>
 #include <hal/gpio_pin.h>
 #include <staticRingBuffer.h>
-#include <cassert>
+#include <assert.h>
 #include <chrono>
 #include <utility>
 #include <hal/boards/arduinomega2560.h>
