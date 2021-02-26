@@ -235,9 +235,10 @@ public:
 			case '%':
 				m_state = State::outOfProgram;
 				break;
+			case '\r': // Same as comment, just ignore till the end of the line
 			case ';':
 				m_state = State::comment;
-				[[fallthrough]]; // Fallthrough to process opcode, because there is nothing left useful in this line
+				break;
 			case '\n':
 			{
 				OpCodeParser parser;
