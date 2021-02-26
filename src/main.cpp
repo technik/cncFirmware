@@ -3,9 +3,11 @@
 #include <Arduino.h>
 #include <hal/gpio_pin.h>
 #include <staticRingBuffer.h>
+#include <cassert>
 #include <chrono>
 #include <utility>
 #include <hal/boards/arduinomega2560.h>
+#include "AnalogJoystick.h"
 
 using namespace etl::hal;
 using namespace etl;
@@ -50,90 +52,34 @@ XAxisStepper gMotorX;
 YAxisStepper gMotorY;
 ZAxisStepper gMotorZ;
 
-enum class Axis : uint8_t {
-	X, Y, Z
-};
-
 struct StepperController
 {
 	bool Finished();
 	bool Continue();
 
-	template<int axis> struct Axis {};
+	template<int axis>
+	void move(int32_t steps, duration time)
+	{
+		auto& motor = motorState[axis];
+		motor.pendingSteps = steps;
+		motor.totalSteps = abs(steps);
+	}
 
 	template<int axis>
-	void move(int32_t steps);
-	template<int axis>
-	void resetPosition();
+	void resetPosition()
+	{
+		motorState[axis].pendingSteps = 0;
+		motorState[axis].position = 0;
+	}
 
 private:
 	struct StepperState
 	{
 		duration stepPeriod;
 		int32_t pendingSteps;
+		int32_t totalSteps;
 		int32_t position;
 	} motorState[3];
-};
-
-template<> struct StepperController::Axis<0> { auto& getMotor() { return gMotorX; } };
-template<> struct StepperController::Axis<1> { auto& getMotor() { return gMotorX; } };
-template<> struct StepperController::Axis<2> { auto& getMotor() { return gMotorX; } };
-
-template<class Pin>
-struct InputButton
-{
-	void read()
-	{
-		m_state = (m_state<<1) & FullStateMask;
-		m_state |= m_pin?1:0;
-	}
-	bool pressed() const { return m_state == CurStateMask; }
-	bool held() const { return m_state == FullStateMask; }
-	bool released() const { return m_state == LastStateMask; };
-
-private:
-	static constexpr uint8_t CurStateMask = 1;
-	static constexpr uint8_t LastStateMask = (1<<1);
-	static constexpr uint8_t FullStateMask = CurStateMask | LastStateMask;
-	// bit 0: current state; bit 1: past state
-	uint8_t m_state{};
-	typename Pin::In m_pin;
-};
-
-template<int pinX, int pinY, class ButtonPin>
-struct AnalogJoystick
-{
-	struct Axis
-	{
-		Axis(int pin)
-			: m_pin(pin)
-		{
-			pinMode(pin, INPUT);
-			m_center = analogRead(pin);
-		}
-
-		void read()
-		{
-			m_pos = analogRead(m_pin);
-		}
-
-		int m_pin;
-		int m_pos;
-		uint16_t m_center;
-		uint16_t m_max;
-		uint16_t m_min;
-	};
-
-	void read()
-	{
-		xAxis.read();
-		yAxis.read();
-		button.read();
-	}
-
-	Axis xAxis{pinX};
-	Axis yAxis{pinY};
-	InputButton<ButtonPin> button;
 };
 
 LedPin gLed;
@@ -159,29 +105,175 @@ AnalogJoystick<A5, A10, Pin44> gLeftStick;
 
 etl::FixedRingBuffer<char,128> pendingMessage;
 
-void parseLine()
+struct GCodeOperation
 {
-	Serial.println("ok");
-}
+	// Arguments first for more compact alignment
+	int argument[4]; // X,Y,Z,F
+	// Instruction
+	uint8_t opCode; // [0,99] -> G, [100,199] -> M
 
-void processGCode()
+	static constexpr uint8_t CodeOffsetG = 0;
+	static constexpr uint8_t CodeOffsetM = 100;
+};
+
+etl::FixedRingBuffer<GCodeOperation, 8> operationsBuffer;
+
+class OpCodeParser
 {
-	if(Serial.available())
+public:
+	void parseOpCode()
 	{
-		// Read characters one by one to minimize blocking time, and yield frequently to motor execution
-		char c;
-		Serial.readBytes(&c,1);
-		if (c == '\n')
+		// We shouldn't be processing empty lines.
+		// That could lead to us pushing garbage to the execution queue, or acknowleding commands prematurely
+		assert(!pendingMessage.empty());
+
+		operationsBuffer.push_back({});
+		GCodeOperation& instruction = operationsBuffer.back();
+		uint8_t code{};
+		int8_t argSign = 1;
+
+		for (int i = 0; i < pendingMessage.size(); ++i)
 		{
-			parseLine();
+			char c = pendingMessage[i];
+			switch (m_state)
+			{
+			case State::address:
+				switch (c)
+				{
+				case ' ':
+					break; // Ignore white space at the start of the line
+				case 'G':
+					m_state = State::code;
+					instruction.opCode = GCodeOperation::CodeOffsetG;
+					break;
+				case 'M':
+					m_state = State::code;
+					instruction.opCode = GCodeOperation::CodeOffsetM;
+					break;
+				default:
+					signalError();
+					return;
+				}
+				break;
+			case State::code:
+				if (c >= '0' && c <= '9')
+					code = 10 * code + (c - '0');
+				else if (c == ' ')
+				{
+					m_state = State::arguments;
+					instruction.opCode += code;
+					code = 0;
+				}
+				else
+				{
+					signalError();
+					return;
+				}
+				break;
+			case State::arguments:
+				assert(false && "Not implemented");
+				break;
+			case State::integer:
+				assert(false && "Not implemented");
+				break;
+			case State::decimal:
+				assert(false && "Not implemented");
+				break;
+			}
 		}
-		else
-			pendingMessage.push_back(c);
+		// Clear message and acknowledge
+		pendingMessage.clear();
+		Serial.println("ok");
 	}
-}
+
+	void signalError()
+	{
+		pendingMessage.clear();
+		Serial.println("error");
+	}
+
+private:
+	enum class State
+	{
+		address,
+		code,
+		arguments,
+		integer,
+		decimal,
+	} m_state = State::address;
+};
+
+
+class GCodeParser
+{
+public:
+	void parseInput()
+	{
+		if (m_state == State::full)
+		{
+			if (operationsBuffer.full())
+				return;
+			m_state = State::message; // No longer full, can proceed to parse input messages
+		}
+		// Parse one character at a time and yield to increase motor control throughput
+		if (!Serial.available())
+			return;
+		char c;
+		Serial.readBytes(&c, 1);
+		switch (m_state)
+		{
+		case State::outOfProgram:
+		{
+			if (c == '%')
+				m_state = State::comment; // Comment out the rest of the line
+			break;
+		}
+		case State::message:
+		{
+			switch (c)
+			{
+			case '%':
+				m_state = State::outOfProgram;
+				break;
+			case ';':
+				m_state = State::comment;
+				[[fallthrough]]; // Fallthrough to process opcode, because there is nothing left useful in this line
+			case '\n':
+			{
+				OpCodeParser parser;
+				parser.parseOpCode();
+				break;
+			}
+			default:
+				pendingMessage.push_back(c);
+				break;
+			}
+			break;
+		}
+		case State::comment:
+		{
+			if (c == '\n')
+				m_state = State::message;
+			break;
+		}
+		}
+	}
+private:
+	enum class State
+	{
+		outOfProgram,
+		message,
+		comment,
+		full,
+	} m_state = State::outOfProgram;
+} gCodeParser;
 
 void loop()
-{	
+{
+	// Consume data from the serial port
+	gCodeParser.parseInput();
+
+	// Control motors
 	if(gLeftStick.xAxis.m_pos < 60)
 	{
 		gLed.setHigh();
@@ -200,12 +292,6 @@ void loop()
 	delay(1);
 	if(gEndStopMinX)
 		gMotorY.setDir(true);
-	// Consume work from the task queue
-	// Global work flow looks like:
-	// - Interrupt from hardware stops
-	// - Interrupt from motor control
-	// - Consume data from the serial port. Interpret the G-Code and write ack to it
-	processGCode();
 }
 
 #ifdef SITL

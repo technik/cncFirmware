@@ -5,7 +5,11 @@ project(cncSITL)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(cncSITL ../src/main.cpp Arduino.cpp)
+add_executable(cncSITL
+	Arduino.cpp
+	../src/main.cpp
+	../src/AnalogJoystick.h)
+
 target_compile_definitions(cncSITL PRIVATE SITL)
 target_include_directories(cncSITL PUBLIC ${CMAKE_CUR_PROJECT_DIR}../sitl)
 target_include_directories(cncSITL PUBLIC ${CMAKE_CUR_PROJECT_DIR}../src)
