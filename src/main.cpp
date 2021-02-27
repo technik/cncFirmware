@@ -93,12 +93,9 @@ void setup() {
 	// Setup serial port
 	Serial.begin(9600);
 	// Start motor control
-	gMotorY.setDir(false);
 	gMotorX.enable();
 	gMotorY.enable();
 	gMotorZ.enable();
-	// Start message processing
-	// executeGCode();
 }
 
 AnalogJoystick<A5, A10, Pin44> gLeftStick;
@@ -108,8 +105,10 @@ etl::FixedRingBuffer<char,128> pendingMessage;
 struct GCodeOperation
 {
 	// Arguments first for more compact alignment
-	int argument[4]; // X,Y,Z,F
+	static constexpr int32_t kEmptyArg = -int32_t(1<<31);
+	int32_t argument[4] = { kEmptyArg, kEmptyArg, kEmptyArg, kEmptyArg }; // X,Y,Z,F
 	// Instruction
+	uint8_t address;
 	uint8_t opCode; // [0,99] -> G, [100,199] -> M
 
 	static constexpr uint8_t CodeOffsetG = 0;
@@ -117,6 +116,15 @@ struct GCodeOperation
 };
 
 etl::FixedRingBuffer<GCodeOperation, 8> operationsBuffer;
+
+void signalError()
+{
+	pendingMessage.clear();
+	gMotorX.disable();
+	gMotorY.disable();
+	gMotorZ.disable();
+	Serial.println("error");
+}
 
 class OpCodeParser
 {
@@ -129,8 +137,10 @@ public:
 
 		operationsBuffer.push_back({});
 		GCodeOperation& instruction = operationsBuffer.back();
-		uint8_t code{};
+		instruction.address = {};
+		instruction.opCode = {};
 		int8_t argSign = 1;
+		int8_t argPos = 0;
 
 		for (int i = 0; i < pendingMessage.size(); ++i)
 		{
@@ -143,12 +153,9 @@ public:
 				case ' ':
 					break; // Ignore white space at the start of the line
 				case 'G':
-					m_state = State::code;
-					instruction.opCode = GCodeOperation::CodeOffsetG;
-					break;
 				case 'M':
 					m_state = State::code;
-					instruction.opCode = GCodeOperation::CodeOffsetM;
+					instruction.address = c;
 					break;
 				default:
 					signalError();
@@ -157,12 +164,10 @@ public:
 				break;
 			case State::code:
 				if (c >= '0' && c <= '9')
-					code = 10 * code + (c - '0');
+					instruction.opCode = 10 * instruction.opCode + (c - '0');
 				else if (c == ' ')
 				{
 					m_state = State::arguments;
-					instruction.opCode += code;
-					code = 0;
 				}
 				else
 				{
@@ -171,25 +176,59 @@ public:
 				}
 				break;
 			case State::arguments:
-				assert(false && "Not implemented");
+				if (c == ' ')
+					break; // Ignore extra spaces
+				switch (c)
+				{
+				case 'X':
+					argPos = 0;
+					break;
+				case 'Y':
+					argPos = 1;
+					break;
+				case 'Z':
+					argPos = 2;
+					break;
+				case 'F':
+					argPos = 3;
+					break;
+				default:
+					signalError();
+					return;
+				}
+				m_state = State::integer;
+				argSign = 1;
+				instruction.argument[argPos] = 0;
 				break;
 			case State::integer:
-				assert(false && "Not implemented");
+				if (c == '-')
+					argSign = -1;
+				else if (c >= '0' && c <= '9')
+				{
+					instruction.argument[argPos] *= 10;
+					instruction.argument[argPos] += (c - '0') * argSign;
+				}
+				else if (c == '.')
+				{
+					signalError(); // Decimal points not yet supported
+					m_state = State::decimal;
+				}
+				else if (c == ' ')
+					m_state = State::arguments;
+				else
+				{
+					signalError();
+					return;
+				}
 				break;
 			case State::decimal:
-				assert(false && "Not implemented");
-				break;
+				signalError(); // Not yet supported
+				return;
 			}
 		}
 		// Clear message and acknowledge
 		pendingMessage.clear();
 		Serial.println("ok");
-	}
-
-	void signalError()
-	{
-		pendingMessage.clear();
-		Serial.println("error");
 	}
 
 private:
@@ -254,7 +293,14 @@ public:
 		case State::comment:
 		{
 			if (c == '\n')
+			{
+				if (!pendingMessage.empty())
+				{
+					OpCodeParser parser;
+					parser.parseOpCode();
+				}
 				m_state = State::message;
+			}
 			break;
 		}
 		}
@@ -275,6 +321,7 @@ void loop()
 	gCodeParser.parseInput();
 
 	// Control motors
+	/*gLeftStick.read();
 	if(gLeftStick.xAxis.m_pos < 60)
 	{
 		gLed.setHigh();
@@ -286,13 +333,12 @@ void loop()
 		gMotorX.setDir(false);
 	}
 
-	gLeftStick.read();
 	gMotorX.step();
 	//gMotorY.step();
 	//gMotorZ.step();
 	delay(1);
 	if(gEndStopMinX)
-		gMotorY.setDir(true);
+		gMotorY.setDir(true);*/
 }
 
 #ifdef SITL
