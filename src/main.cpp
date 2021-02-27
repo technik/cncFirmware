@@ -105,7 +105,7 @@ etl::FixedRingBuffer<char,128> pendingMessage;
 struct GCodeOperation
 {
 	// Arguments first for more compact alignment
-	static constexpr int32_t kEmptyArg = -int32_t(1<<31);
+	static constexpr int32_t kEmptyArg = int32_t(1ul<<31);
 	int32_t argument[4] = { kEmptyArg, kEmptyArg, kEmptyArg, kEmptyArg }; // X,Y,Z,F
 	// Instruction
 	uint8_t address;
@@ -142,7 +142,7 @@ public:
 		int8_t argSign = 1;
 		int8_t argPos = 0;
 
-		for (int i = 0; i < pendingMessage.size(); ++i)
+		for (size_t i = 0; i < pendingMessage.size(); ++i)
 		{
 			char c = pendingMessage[i];
 			switch (m_state)
