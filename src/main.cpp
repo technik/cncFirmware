@@ -1,5 +1,22 @@
-// Disable unintentional include of time.h in WIN32, which redefines clock
-#define _INC_TIME
+//-------------------------------------------------------------
+// Copyright 2021 Carmelo J Fdez-Aguera
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+// and associated documentation files (the "Software"), to deal in the Software without restriction,
+// including without limitation the rights to use, copy, modify, merge, publish, distribute,
+// sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all copies or
+// substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+// NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+#define _INC_TIME // Disable unintentional include of time.h in WIN32, which redefines clock
 #include <Arduino.h>
 #include <hal/gpio_pin.h>
 #include <staticRingBuffer.h>
@@ -8,6 +25,8 @@
 #include <utility>
 #include <hal/boards/arduinomega2560.h>
 #include "AnalogJoystick.h"
+#include "motionController.h"
+#include "GCode.h"
 
 using namespace etl::hal;
 using namespace etl;
@@ -16,113 +35,19 @@ using clock = std::chrono::steady_clock;
 using time_point = clock::time_point;
 using duration = clock::duration;
 
-template<class StepPin, class DirPin, class EnablePin>
-struct StepperDriver
-{
-	void enable() { enablePin.setLow(); }
-	void disable() { enablePin.setHigh(); }
-
-	void setDir(bool sign)
-	{
-		if(sign)
-			dirPin.setHigh();
-		else
-			dirPin.setLow();
-	}
-
-	void step()
-	{
-		stepPin.setHigh();
-		delayMicroseconds(20);
-		stepPin.setLow();
-	}
-
-	typename StepPin::Out stepPin;
-	typename DirPin::Out dirPin;
-	typename EnablePin::Out enablePin;
-};
-
-// Ramps 1.4 definitions
-using XAxisStepper = StepperDriver<Pin54,Pin55,Pin38>;
-// using YAxisStepper = StepperDriver<Pin60,Pin61,Pin56>; // Original RAMPS mapping
-using YAxisStepper = StepperDriver<Pin26,Pin28,Pin24>; // Remapping due to a few burnt traces
-using ZAxisStepper = StepperDriver<Pin46,Pin48,Pin62>;
-
-XAxisStepper gMotorX;
-YAxisStepper gMotorY;
-ZAxisStepper gMotorZ;
-
-struct StepperController
-{
-	bool Finished();
-	bool Continue();
-
-	template<int axis>
-	void move(int32_t steps, duration time)
-	{
-		auto& motor = motorState[axis];
-		motor.pendingSteps = steps;
-		motor.totalSteps = abs(steps);
-	}
-
-	template<int axis>
-	void resetPosition()
-	{
-		motorState[axis].pendingSteps = 0;
-		motorState[axis].position = 0;
-	}
-
-private:
-	struct StepperState
-	{
-		duration stepPeriod;
-		int32_t pendingSteps;
-		int32_t totalSteps;
-		int32_t position;
-	} motorState[3];
-};
-
 LedPin gLed;
-
-using XMinEndStop = Pin3::In;
-
-XMinEndStop gEndStopMinX;
-
-void setup() {
-	// Setup scheduler
-	// Setup serial port
-	Serial.begin(9600);
-	// Start motor control
-	gMotorX.enable();
-	gMotorY.enable();
-	gMotorZ.enable();
-}
 
 AnalogJoystick<A5, A10, Pin44> gLeftStick;
 
 etl::FixedRingBuffer<char,128> pendingMessage;
 
-struct GCodeOperation
-{
-	// Arguments first for more compact alignment
-	static constexpr int32_t kEmptyArg = int32_t(1ul<<31);
-	int32_t argument[4] = { kEmptyArg, kEmptyArg, kEmptyArg, kEmptyArg }; // X,Y,Z,F
-	// Instruction
-	uint8_t address;
-	uint8_t opCode; // [0,99] -> G, [100,199] -> M
-
-	static constexpr uint8_t CodeOffsetG = 0;
-	static constexpr uint8_t CodeOffsetM = 100;
-};
-
 etl::FixedRingBuffer<GCodeOperation, 8> operationsBuffer;
+MotionController gMotionController;
 
 void signalError()
 {
 	pendingMessage.clear();
-	gMotorX.disable();
-	gMotorY.disable();
-	gMotorZ.disable();
+	gMotionController.stop();
 	Serial.println("error");
 }
 
@@ -242,7 +167,6 @@ private:
 	} m_state = State::address;
 };
 
-
 class GCodeParser
 {
 public:
@@ -314,6 +238,12 @@ private:
 		full,
 	} m_state = State::outOfProgram;
 } gCodeParser;
+
+void setup() {
+	// Setup scheduler
+	// Setup serial port
+	Serial.begin(9600);
+}
 
 void loop()
 {
