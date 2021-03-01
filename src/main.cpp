@@ -30,6 +30,7 @@
 
 using namespace etl::hal;
 using namespace etl;
+using namespace std::chrono_literals;
 
 using clock = std::chrono::steady_clock;
 using time_point = clock::time_point;
@@ -188,7 +189,11 @@ public:
 		case State::outOfProgram:
 		{
 			if (c == '%')
+			{
 				m_state = State::comment; // Comment out the rest of the line
+				gMotionController.start();
+				gLed.setHigh();
+			}
 			break;
 		}
 		case State::message:
@@ -197,6 +202,8 @@ public:
 			{
 			case '%':
 				m_state = State::outOfProgram;
+				gMotionController.stop();
+				gLed.setLow();
 				break;
 			case '\r': // Same as comment, just ignore till the end of the line
 			case ';':
@@ -243,12 +250,69 @@ void setup() {
 	// Setup scheduler
 	// Setup serial port
 	Serial.begin(9600);
+	Serial.println("ready");
+	gLed.setLow();
 }
+
+bool moving = false;
+
+constexpr int32_t XstepsPerMM = 200 * 16 / 2;
+constexpr int32_t YstepsPerMM = int32_t(200 * 16 / (13*2*3.14159f));
+constexpr int32_t ZstepsPerMM = 200 * 16 / 2;
+
+constexpr int32_t kMaxSpeedX = 10; // mm/s
+constexpr duration kMinPeriodX = std::chrono::microseconds(int32_t(1'000'000.f/(kMaxSpeedX * XstepsPerMM) + 0.5f)); // mm/s
 
 void loop()
 {
 	// Consume data from the serial port
 	gCodeParser.parseInput();
+
+	if (moving)
+	{
+		if (gMotionController.finished())
+			moving = false;
+		else
+		{
+			gMotionController.step();
+		}
+	}
+	else
+	{
+		if (!operationsBuffer.empty())
+		{
+			auto op = operationsBuffer.front();
+			operationsBuffer.pop_front();
+
+			if (op.address == 'G')
+			{
+				if (op.opCode == 30) // GO to reference
+				{
+					gMotionController.goHome();
+					moving = true;
+				}
+				else if(op.opCode == 1) // Move
+				{
+					auto targetPos = gMotionController.getMotorPositions();
+					auto srcPos = targetPos;
+					if (op.argument[0] != MotionController::kUnknownPos)
+						targetPos.x() = op.argument[0] * XstepsPerMM;
+
+					if (op.argument[1] != MotionController::kUnknownPos)
+						targetPos.y() = op.argument[1];
+
+					if (op.argument[2] != MotionController::kUnknownPos)
+						targetPos.x() = op.argument[2];
+
+					auto dt = kMinPeriodX * abs(max(1, targetPos.x() - srcPos.x()));
+					gMotionController.setLinearTarget(targetPos, dt);
+					moving = true;
+				}
+			}
+
+
+		}
+	}
 
 	// Control motors
 	/*gLeftStick.read();

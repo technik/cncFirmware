@@ -71,6 +71,10 @@ static const uint8_t A15 = PIN_A15;
 #define OUTPUT 0x1
 #define INPUT_PULLUP 0x2
 
+
+#define min(a,b) ((a)<(b)?(a):(b))
+#define max(a,b) ((a)>(b)?(a):(b))
+
 struct SerialComm
 {
 	void begin(unsigned baudrate) {}

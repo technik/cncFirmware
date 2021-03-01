@@ -7,8 +7,13 @@ set(CMAKE_CXX_STANDARD 20)
 
 add_executable(cncSITL
 	Arduino.cpp
+	../src/AnalogJoystick.h
+	../src/GCode.h
 	../src/main.cpp
-	../src/AnalogJoystick.h)
+	../src/motionController.cpp
+	../src/motionController.h
+	../src/stepperDriver.h
+	../src/vector.h)
 
 target_compile_definitions(cncSITL PRIVATE SITL)
 target_include_directories(cncSITL PUBLIC ${CMAKE_CUR_PROJECT_DIR}../sitl)

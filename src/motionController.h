@@ -39,7 +39,7 @@ public:
 
 	void step();
 	bool finished() const { return m_targetPosition == m_curPosition; }
-	const Vec3i getMotorPositions() const { return m_curPosition; }
+	const Vec3i& getMotorPositions() const { return m_curPosition; }
 
 	// Motion operations
 	void setLinearTarget(const Vec3i& targetPos, duration dt);

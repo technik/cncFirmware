@@ -42,7 +42,7 @@ struct Vector
 	{
 		for (int i = 0; i < N; ++i)
 		{
-			m[i] = other[i];
+			m[i] = T(other[i]);
 		}
 	}
 	Vector(T _x, T _y) : m{ _x, _y } { static_assert(N > 1); }
@@ -114,7 +114,6 @@ Vector<T, N> operator-(Vector<T, N> a, Vector<T, N> b)
 template<class T, int N>
 bool operator==(Vector<T, N> a, Vector<T, N> b)
 {
-	Vector<T, N> res;
 	bool eq = true;
 	for (int i = 0; i < N; ++i)
 	{
@@ -126,7 +125,6 @@ bool operator==(Vector<T, N> a, Vector<T, N> b)
 template<class T, int N>
 bool operator!=(Vector<T, N> a, Vector<T, N> b)
 {
-	Vector<T, N> res;
 	bool dif = false;
 	for (int i = 0; i < N; ++i)
 	{
