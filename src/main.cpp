@@ -27,12 +27,13 @@
 #include "AnalogJoystick.h"
 #include "motionController.h"
 #include "GCode.h"
+#include "clock.h"
 
 using namespace etl::hal;
 using namespace etl;
 using namespace std::chrono_literals;
 
-using clock = std::chrono::steady_clock;
+using clock = SystemClock;
 using time_point = clock::time_point;
 using duration = clock::duration;
 
@@ -341,6 +342,8 @@ int main(int argc, char** argv)
 {
 	if (argc > 1)
 		Serial.InitFromFile(argv[1]);
+	// Reset system clock
+	SystemClock::now();
 	setup();
 	for(;;)
 		loop();

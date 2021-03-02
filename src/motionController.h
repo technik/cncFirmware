@@ -17,7 +17,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
-#include <chrono>
+#include "clock.h"
 #include "stepperDriver.h"
 #include "vector.h"
 
@@ -25,7 +25,7 @@
 class MotionController
 {
 public:
-	using clock = std::chrono::steady_clock;
+	using clock = SystemClock;
 	using duration = clock::duration;
 	using time = clock::time_point;
 

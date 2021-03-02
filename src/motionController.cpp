@@ -70,17 +70,11 @@ void MotionController::step()
 			{
 				MotorX.step();
 				m_curPosition.x()++;
-#ifdef SITL
-				std::cout << "X++\n";
-#endif
 			}
 			else if (instantTarget.x() < m_curPosition.x())
 			{
 				MotorX.step();
 				m_curPosition.x()--;
-#ifdef SITL
-				std::cout << "X--\n";
-#endif
 			}
 		}
 	}
@@ -99,10 +93,6 @@ void MotionController::setLinearTarget(const Vec3i& targetPos, duration dt)
 
 	m_t0 = clock::now();
 	m_dt = dt;
-	Serial.print("G1 X");
-	Serial.print(m_targetPosition.x());
-	Serial.print(";cx:");
-	Serial.println(m_curPosition.x());
 }
 
 void MotionController::goHome()
