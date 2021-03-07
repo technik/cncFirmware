@@ -4,6 +4,7 @@ project(cncSITL)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(CMAKE_CXX_STANDARD 20)
+add_compile_definitions(NO_MIN_MAX)
 
 enable_testing()
 
