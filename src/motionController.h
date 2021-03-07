@@ -20,7 +20,7 @@
 #include "clock.h"
 #include "stepperDriver.h"
 #include "vector.h"
-#include <vector>
+//#include <vector>
 
 // Control motor stepping for all three axes and keep track of their estimated position
 template<class clock_t>
