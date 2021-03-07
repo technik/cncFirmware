@@ -115,7 +115,9 @@ inline void delay(unsigned long ms)
 inline void delayMicroseconds(unsigned int us)
 {
 	auto sleepTime = std::chrono::microseconds(us);
-	std::this_thread::sleep_for(sleepTime);
+	auto t0 = std::chrono::steady_clock::now();
+	while(std::chrono::steady_clock::now() - t0 < sleepTime)
+	{ }
 }
 
 inline void pinMode(uint8_t pin, uint8_t mode)
