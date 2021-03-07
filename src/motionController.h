@@ -20,6 +20,7 @@
 #include "clock.h"
 #include "stepperDriver.h"
 #include "vector.h"
+#include <vector>
 
 // Control motor stepping for all three axes and keep track of their estimated position
 template<class clock_t>
@@ -46,6 +47,8 @@ public:
 	void setLinearTarget(const Vec3i& targetPos, duration dt);
 	void goHome();
 	// TODO: Arc movements
+
+	//std::vector<std::pair<typename clock_t::duration,int>> tlog;
 
 private:
 	time m_t0; // Motion start time
@@ -109,6 +112,7 @@ void MotionController<clock_t>::step()
 
 	auto instantTarget = m_srcPosition + dPos;
 	// Do I need to move?
+	//tlog.push_back({ dt,instantTarget.x() });
 	if (instantTarget != m_curPosition)
 	{
 		//std::cout << "dt:" << dt.count() << ",ix:" << instantTarget.x() << ",x:" << m_curPosition.x() << std::endl;

@@ -87,19 +87,20 @@ void testPositiveLongMotionX()
 	const auto targetPos = Vec3i(100, 0, 0);
 	mc.setLinearTarget(targetPos, 1s);
 	auto t0 = clock::now();
-	int iter = 0;
-	std::vector<clock::duration> samples;
-	samples.reserve(1000000);
+	
 	while(clock::now() - t0 < 1001ms)
 	{
-		samples.push_back(clock::now() - t0);
-		++iter;
 		if (mc.finished())
 			break;
 		mc.step();
 	}
 	auto totalT = clock::now() - t0;
 	auto finalPos = mc.getMotorPositions();
+
+	//std::ofstream tlog("tlog.csv");
+	//for (auto x : mc.tlog) tlog << x.first.count() << ", " << x.second << "\n";
+	//tlog.close();
+
 	assert(targetPos == finalPos);
 }
 
