@@ -18,6 +18,7 @@
 
 #pragma once
 #include <cstddef>
+#include "limits.h"
 
 template<class T, int N>
 struct Vector
@@ -60,6 +61,7 @@ auto operator*(Vector<T1,N> v, T2 x)
 	Vector<MulT, N> res;
 	for (int i = 0; i < N; ++i)
 	{
+		assert(LONG_MAX / x > v[i]);
 		res[i] = v[i]*x;
 	}
 	return res;
