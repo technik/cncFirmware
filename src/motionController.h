@@ -56,6 +56,7 @@ private:
 	Vec3i m_curPosition = { kUnknownPos, kUnknownPos , kUnknownPos };
 	Vec3i m_targetPosition = { kUnknownPos, kUnknownPos , kUnknownPos };
 	Vec3i m_srcPosition = { kUnknownPos, kUnknownPos , kUnknownPos };
+	Vec3i m_arc = { 0, 0, 0 };
 
 	XAxisStepper MotorX;
 	YAxisStepper MotorY;
@@ -107,8 +108,7 @@ void MotionController<clock_t>::step()
 	// Compute instant target
 	auto t = clock::now();
 	auto dt = t - m_t0;
-	auto arc = m_targetPosition - m_srcPosition;
-	Vec3i dPos = arc * dt.count() / m_dt.count();
+	Vec3i dPos = m_arc * dt.count() / m_dt.count();
 
 	auto instantTarget = m_srcPosition + dPos;
 	// Do I need to move?
@@ -136,11 +136,14 @@ void MotionController<clock_t>::step()
 template<class clock_t>
 void MotionController<clock_t>::setLinearTarget(const Vec3i& targetPos, duration dt)
 {
+	if (dt.count() == 0)
+		return; // Avoid impossible operations and division by 0
 	m_targetPosition = targetPos;
 	m_targetPosition.x() = max(m_targetPosition.x(), 0);
 	m_targetPosition.y() = max(m_targetPosition.y(), 0);
 	m_targetPosition.z() = max(m_targetPosition.z(), 0);
 	m_srcPosition = m_curPosition;
+	m_arc = m_targetPosition - m_srcPosition;
 	MotorX.setDir(m_targetPosition.x() >= m_curPosition.x());
 	MotorY.setDir(m_targetPosition.y() >= m_curPosition.y());
 	MotorZ.setDir(m_targetPosition.z() >= m_curPosition.z());
