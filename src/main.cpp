@@ -306,7 +306,7 @@ void loop()
 						targetPos.x() = op.argument[2];
 
 					auto dt = kMinPeriodX * abs(max(1, targetPos.x() - srcPos.x()));
-					gMotionController.setLinearTarget(targetPos, dt);
+					gMotionController.setLinearTarget(targetPos, std::chrono::duration_cast<std::chrono::milliseconds>(dt));
 					moving = true;
 				}
 			}

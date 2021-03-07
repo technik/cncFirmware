@@ -49,7 +49,7 @@ void testGoHome()
 	assert(homePos.z() == 0);
 }
 
-void testPositiveShortMotionX()
+void testPositiveMotionX(int32_t steps, std::chrono::milliseconds deadline)
 {
 	using clock = RealTimeClock;
 	MotionController<clock> mc;
@@ -60,47 +60,16 @@ void testPositiveShortMotionX()
 		mc.step();
 	}
 	// Move a short distance along the X axis
-	const auto targetPos = Vec3i(1,0,0);
-	mc.setLinearTarget(targetPos, 1s);
+	const auto targetPos = Vec3i(steps,0,0);
+	mc.setLinearTarget(targetPos, deadline);
 	auto t0 = clock::now();
-	while (clock::now() - t0 < 1001ms)
+	while (clock::now() - t0 <= deadline+1ms)
 	{
 		if (mc.finished())
 			break;
 		mc.step();
 	}
 	auto finalPos = mc.getMotorPositions();
-	assert(targetPos == finalPos);
-}
-
-void testPositiveLongMotionX()
-{
-	using clock = RealTimeClock;
-	MotionController<clock> mc;
-	mc.start();
-	mc.goHome();
-	while (!mc.finished())
-	{
-		mc.step();
-	}
-	// Move a short distance along the X axis
-	const auto targetPos = Vec3i(100, 0, 0);
-	mc.setLinearTarget(targetPos, 1s);
-	auto t0 = clock::now();
-	
-	while(clock::now() - t0 < 1001ms)
-	{
-		if (mc.finished())
-			break;
-		mc.step();
-	}
-	auto totalT = clock::now() - t0;
-	auto finalPos = mc.getMotorPositions();
-
-	//std::ofstream tlog("tlog.csv");
-	//for (auto x : mc.tlog) tlog << x.first.count() << ", " << x.second << "\n";
-	//tlog.close();
-
 	assert(targetPos == finalPos);
 }
 
@@ -110,8 +79,9 @@ int main()
 	//testGoHome();
 	// Initialize the real time clock for time sensitive tests
 	RealTimeClock::now();
-	//testPositiveShortMotionX();
-	testPositiveLongMotionX();
+	testPositiveMotionX(1, 10ms);
+	testPositiveMotionX(100, 1001ms);
+	testPositiveMotionX(80000, 10'001ms);
 	// Initialize the mock clock
 	MockClockSrc::currentTime = MockClockSrc::time_point(1ms);
 	MockClockSrc::now();

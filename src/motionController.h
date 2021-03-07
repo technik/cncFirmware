@@ -44,7 +44,7 @@ public:
 	const Vec3i& getMotorPositions() const { return m_curPosition; }
 
 	// Motion operations
-	void setLinearTarget(const Vec3i& targetPos, duration dt);
+	void setLinearTarget(const Vec3i& targetPos, std::chrono::milliseconds dt);
 	void goHome();
 	// TODO: Arc movements
 
@@ -52,7 +52,7 @@ public:
 
 private:
 	time m_t0; // Motion start time
-	duration m_dt{};
+	std::chrono::milliseconds m_dt{};
 	Vec3i m_curPosition = { kUnknownPos, kUnknownPos , kUnknownPos };
 	Vec3i m_targetPosition = { kUnknownPos, kUnknownPos , kUnknownPos };
 	Vec3i m_srcPosition = { kUnknownPos, kUnknownPos , kUnknownPos };
@@ -107,7 +107,7 @@ void MotionController<clock_t>::step()
 
 	// Compute instant target
 	auto t = clock::now();
-	auto dt = t - m_t0;
+	auto dt = std::chrono::duration_cast<std::chrono::milliseconds>(t - m_t0);
 	Vec3i dPos = m_arc * dt.count() / m_dt.count();
 
 	auto instantTarget = m_srcPosition + dPos;
@@ -134,7 +134,7 @@ void MotionController<clock_t>::step()
 }
 
 template<class clock_t>
-void MotionController<clock_t>::setLinearTarget(const Vec3i& targetPos, duration dt)
+void MotionController<clock_t>::setLinearTarget(const Vec3i& targetPos, std::chrono::milliseconds dt)
 {
 	if (dt.count() == 0)
 		return; // Avoid impossible operations and division by 0
