@@ -44,7 +44,7 @@ AnalogJoystick<A5, A10, Pin44> gLeftStick;
 etl::FixedRingBuffer<char,128> pendingMessage;
 
 etl::FixedRingBuffer<GCodeOperation, 8> operationsBuffer;
-MotionController gMotionController;
+MotionController<SystemClock> gMotionController;
 
 void signalError()
 {
@@ -296,13 +296,13 @@ void loop()
 				{
 					auto targetPos = gMotionController.getMotorPositions();
 					auto srcPos = targetPos;
-					if (op.argument[0] != MotionController::kUnknownPos)
+					if (op.argument[0] != MotionController<SystemClock>::kUnknownPos)
 						targetPos.x() = op.argument[0] * XstepsPerMM;
 
-					if (op.argument[1] != MotionController::kUnknownPos)
+					if (op.argument[1] != MotionController<SystemClock>::kUnknownPos)
 						targetPos.y() = op.argument[1];
 
-					if (op.argument[2] != MotionController::kUnknownPos)
+					if (op.argument[2] != MotionController<SystemClock>::kUnknownPos)
 						targetPos.x() = op.argument[2];
 
 					auto dt = kMinPeriodX * abs(max(1, targetPos.x() - srcPos.x()));

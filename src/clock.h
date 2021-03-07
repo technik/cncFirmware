@@ -20,6 +20,66 @@
 #include <cstddef>
 #include <chrono>
 
+#ifdef WIN32
+template<class baseClock>
+struct AtmegaEmulatedClock
+{
+	using rep = int32_t;
+	using period = std::chrono::microseconds::period;
+	using duration = std::chrono::duration<rep, period>;
+	using time_point = std::chrono::time_point<AtmegaEmulatedClock<baseClock>>;
+
+	static constexpr bool is_steady = true;
+
+	static time_point now() noexcept
+	{
+		// Emulate arduino's internal clock mechanism
+		// This should be equivalent to how the micros() function reconstructs time,
+		// and so reproduce the same kind of quicks and overflows
+		constexpr uint32_t FCPU = 16'000'000; // 16MHz
+		constexpr uint32_t clockCyclesPerMicrosecond = FCPU / 1'000'000;
+		constexpr uint32_t timerDiv = 64;
+		constexpr uint32_t timerCapacity = 256;
+
+		// Use time from first call as an approximation to time from start in the device
+		using implClock = std::chrono::steady_clock;
+		static auto t0 = implClock::now();
+		auto timeFromStart = implClock::now() - t0;
+
+		// Emulate the state of internal variables used to track timer overflows in arduino
+		const uint64_t nsFromStart = timeFromStart.count();
+		const uint64_t ticksFromStart = nsFromStart * 16 / 1000; // 16 ticks per microsecond
+		const uint32_t timer0_overflow_count = uint32_t(ticksFromStart / (timerDiv * timerCapacity));
+		const uint8_t tcnt = uint8_t(ticksFromStart/timerDiv); // Timer counter register
+
+		uint32_t result = ((timer0_overflow_count << 8) + tcnt) * (timerDiv / clockCyclesPerMicrosecond);
+
+		return time_point(duration(result));
+	}
+};
+
+using RealTimeClock = AtmegaEmulatedClock<std::chrono::steady_clock>;
+
+struct MockClockSrc
+{
+	using rep = RealTimeClock::rep;
+	using period = std::chrono::steady_clock::period;
+	using duration = std::chrono::duration<rep, period>;
+	using time_point = std::chrono::time_point<MockClockSrc>;
+
+	static constexpr bool is_steady = true;
+
+	static time_point now() noexcept
+	{
+		return currentTime;
+	}
+
+	inline static time_point currentTime;
+};
+using MockClock = AtmegaEmulatedClock<MockClockSrc>;
+
+using SystemClock = AtmegaEmulatedClock<std::chrono::steady_clock>;;
+#else
 struct SystemClock
 {
 	using rep = int32_t;
@@ -31,11 +91,7 @@ struct SystemClock
 
 	static time_point now() noexcept
 	{
-#ifdef WIN32
-		static auto t0 = std::chrono::steady_clock::now();
-		return time_point(std::chrono::duration_cast<duration>(std::chrono::steady_clock::now() - t0));
-#else
 		return time_point(duration(micros()));
-#endif
 	}
 };
+#endif

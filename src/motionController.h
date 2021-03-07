@@ -22,12 +22,13 @@
 #include "vector.h"
 
 // Control motor stepping for all three axes and keep track of their estimated position
+template<class clock_t>
 class MotionController
 {
 public:
-	using clock = SystemClock;
-	using duration = clock::duration;
-	using time = clock::time_point;
+	using clock = clock_t;
+	using duration = typename clock::duration;
+	using time = typename clock::time_point;
 
 	using XMinEndStop = Pin3::In;
 
@@ -59,4 +60,96 @@ private:
 
 	XMinEndStop EndStopMinX;
 };
+
+template<class clock_t>
+MotionController<clock_t>::MotionController()
+{
+	// Make sure we start with motors disabled
+	MotorX.disable();
+	MotorY.disable();
+	MotorZ.disable();
+}
+
+template<class clock_t>
+void MotionController<clock_t>::start()
+{
+	// Make sure we start with motors disabled
+	MotorX.enable();
+	MotorY.enable();
+	MotorZ.enable();
+}
+
+template<class clock_t>
+void MotionController<clock_t>::stop()
+{
+	// Make sure we start with motors disabled
+	MotorX.disable();
+	MotorY.disable();
+	MotorZ.disable();
+}
+
+template<class clock_t>
+void MotionController<clock_t>::step()
+{
+	// Am I there yet?
+	if (finished())
+		return;
+
+	// Check end stops
+	if (EndStopMinX.isHigh())
+	{
+		//m_curPosition.x() = 0;
+	}
+
+	// Compute instant target
+	auto t = clock::now();
+	auto dt = t - m_t0;
+	auto arc = m_targetPosition - m_srcPosition;
+	Vec3i dPos = arc * dt.count() / m_dt.count();
+
+	auto instantTarget = m_srcPosition + dPos;
+	// Do I need to move?
+	if (instantTarget != m_curPosition)
+	{
+		//std::cout << "dt:" << dt.count() << ",ix:" << instantTarget.x() << ",x:" << m_curPosition.x() << std::endl;
+		// step X
+		if (m_curPosition.x() >= 0)
+		{
+			if (instantTarget.x() > m_curPosition.x())
+			{
+				MotorX.step();
+				m_curPosition.x()++;
+			}
+			else if (instantTarget.x() < m_curPosition.x())
+			{
+				MotorX.step();
+				m_curPosition.x()--;
+			}
+		}
+	}
+}
+
+template<class clock_t>
+void MotionController<clock_t>::setLinearTarget(const Vec3i& targetPos, duration dt)
+{
+	m_targetPosition = targetPos;
+	m_targetPosition.x() = max(m_targetPosition.x(), 0);
+	m_targetPosition.y() = max(m_targetPosition.y(), 0);
+	m_targetPosition.z() = max(m_targetPosition.z(), 0);
+	m_srcPosition = m_curPosition;
+	MotorX.setDir(m_targetPosition.x() >= m_curPosition.x());
+	MotorY.setDir(m_targetPosition.y() >= m_curPosition.y());
+	MotorZ.setDir(m_targetPosition.z() >= m_curPosition.z());
+
+	m_t0 = clock::now();
+	m_dt = dt;
+}
+
+template<class clock_t>
+void MotionController<clock_t>::goHome()
+{
+	m_targetPosition = Vec3i(0, 0, 0);
+	m_curPosition = Vec3i(0, 0, 0);
+	m_srcPosition = m_curPosition;
+}
 

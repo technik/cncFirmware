@@ -18,24 +18,25 @@
 #include <cassert>
 #include "../src/motionController.h"
 #include <chrono>
+#include <vector>
 
 using namespace std::chrono_literals;
 
 void testStartUnknown()
 {
-	MotionController mc;
+	MotionController<RealTimeClock> mc;
 	mc.start();
 	auto startPos = mc.getMotorPositions();
-	assert(startPos.x() == MotionController::kUnknownPos);
-	assert(startPos.y() == MotionController::kUnknownPos);
-	assert(startPos.z() == MotionController::kUnknownPos);
+	assert(startPos.x() == MotionController<RealTimeClock>::kUnknownPos);
+	assert(startPos.y() == MotionController<RealTimeClock>::kUnknownPos);
+	assert(startPos.z() == MotionController<RealTimeClock>::kUnknownPos);
 	// Also check there is no ongoing operation on start
 	assert(mc.finished());
 }
 
 void testGoHome()
 {
-	MotionController mc;
+	MotionController<RealTimeClock> mc;
 	mc.start();
 	mc.goHome();
 	while (!mc.finished())
@@ -50,7 +51,8 @@ void testGoHome()
 
 void testPositiveShortMotionX()
 {
-	MotionController mc;
+	using clock = RealTimeClock;
+	MotionController<clock> mc;
 	mc.start();
 	mc.goHome();
 	while (!mc.finished())
@@ -60,9 +62,11 @@ void testPositiveShortMotionX()
 	// Move a short distance along the X axis
 	const auto targetPos = Vec3i(1,0,0);
 	mc.setLinearTarget(targetPos, 1s);
-	auto t0 = MotionController::clock::now();
-	while (!mc.finished() && (MotionController::clock::now() - t0 < 1001ms))
+	auto t0 = clock::now();
+	while (clock::now() - t0 < 1001ms)
 	{
+		if (mc.finished())
+			break;
 		mc.step();
 	}
 	auto finalPos = mc.getMotorPositions();
@@ -71,7 +75,8 @@ void testPositiveShortMotionX()
 
 void testPositiveLongMotionX()
 {
-	MotionController mc;
+	using clock = RealTimeClock;
+	MotionController<clock> mc;
 	mc.start();
 	mc.goHome();
 	while (!mc.finished())
@@ -81,19 +86,33 @@ void testPositiveLongMotionX()
 	// Move a short distance along the X axis
 	const auto targetPos = Vec3i(100, 0, 0);
 	mc.setLinearTarget(targetPos, 1s);
-	auto t0 = MotionController::clock::now();
-	while (!mc.finished() && (MotionController::clock::now() - t0 < 1001ms))
+	auto t0 = clock::now();
+	int iter = 0;
+	std::vector<clock::duration> samples;
+	samples.reserve(1000000);
+	while(clock::now() - t0 < 1001ms)
 	{
+		samples.push_back(clock::now() - t0);
+		++iter;
+		if (mc.finished())
+			break;
 		mc.step();
 	}
+	auto totalT = clock::now() - t0;
 	auto finalPos = mc.getMotorPositions();
 	assert(targetPos == finalPos);
 }
 
 int main()
 {
-	testStartUnknown();
-	testGoHome();
-	testPositiveShortMotionX();
+	//testStartUnknown();
+	//testGoHome();
+	// Initialize the real time clock for time sensitive tests
+	RealTimeClock::now();
+	//testPositiveShortMotionX();
 	testPositiveLongMotionX();
+	// Initialize the mock clock
+	MockClockSrc::currentTime = MockClockSrc::time_point(1ms);
+	MockClockSrc::now();
+	// TODO Mock time tests
 }
