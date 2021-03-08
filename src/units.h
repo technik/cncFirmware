@@ -18,65 +18,65 @@
 #include <ratio>
 #include <chrono> // for speed units
 
-template<class Rep, class Ratio = std::ratio<1>>
-struct Distance
+template<class UnitTag, class Rep, class Ratio = std::ratio<1>>
+struct Unit
 {
 	using rep = Rep; // representation
-	using ratio = Ratio; // Ratio to 1m (S.I. reference units)
+	using period = Ratio; // Ratio to 1m (S.I. reference units)
 
-	constexpr Distance() = default;
-	constexpr explicit Distance(Rep _x) : x(_x) {}
+	constexpr Unit() = default;
+	constexpr explicit Unit(Rep _x) : x(_x) {}
 	
 	template<class Rep2>
-	constexpr explicit Distance(Rep2 _x) : x(_x) {}
+	constexpr explicit Unit(Rep2 _x) : x(_x) {}
 
 	template<class Rep2, class Period2, class relative_ratio = std::ratio_divide<Period2, Ratio>>
-	constexpr Distance(const Distance<Rep2, Period2>& d)
+	constexpr Unit(const Unit<UnitTag, Rep2, Period2>& d)
 		: x(d.x * relative_ratio::num / relative_ratio::den)
 	{
 	}
 
-	Distance& operator=(const Distance& other) = default;
+	Unit& operator=(const Unit& other) = default;
 	
 	constexpr auto count() const { return x; }
 
-	static constexpr Distance zero() noexcept { Distance d; d.x = 0; return d; }
+	static constexpr Unit zero() noexcept { Unit d; d.x = 0; return d; }
 
-	constexpr auto operator+(Distance d) const
+	constexpr auto operator+(Unit d) const
 	{
-		Distance result;
+		Unit result;
 		result.x = x + d.x;
 		return result;
 	}
 
-	constexpr auto operator-(Distance d) const
+	constexpr auto operator-(Unit d) const
 	{
-		Distance result;
+		Unit result;
 		result.x = x - d.x;
 		return result;
 	}
 
 	constexpr auto operator*(Rep k) const
 	{
-		Distance result;
+		Unit result;
 		result.x *= k;
 		return result;
 	}
 
 	constexpr auto operator/(Rep k) const
 	{
-		Distance result;
+		Unit result;
 		result.x /= k;
 		return result;
 	}
 
-	auto& operator+=(Distance d)
+	auto& operator+=(Unit d)
 	{
 		x += d.x;
 		return *this;
 	}
 
-	auto& operator-=(Distance d)
+	auto& operator-=(Unit d)
 	{
 		x -= d.x;
 		return *this;
@@ -98,6 +98,23 @@ private:
 	Rep x;
 };
 
+struct DistanceUnitTag {};
+struct RevolutionUnitTag {};
+struct SpeedUnitTag {};
+
+// Distance unit (S.I. units), ratio relative to 1 meter
+template<class Rep, class Ratio = std::ratio<1>>
+using Distance = Unit<DistanceUnitTag, Rep, Ratio>;
+
+// Revolution units, ratio relative to one full revolution
+template<class Rep, class Ratio = std::ratio<1>>
+using Revolutions = Unit<RevolutionUnitTag, Rep, Ratio>;
+
+// Speed unit (S.I. units), ratio relative to 1 meter/second
+template<class Rep, class Ratio = std::ratio<1>>
+using Speed = Unit<SpeedUnitTag, Rep, Ratio>;
+
+// Define common units and literal suffixes
 using micrometers = Distance<long, std::micro>;
 using millimeters = Distance<long, std::milli>;
 using centimeters = Distance<long, std::ratio<1, 100>>;
@@ -119,86 +136,23 @@ constexpr auto operator""_m(unsigned long long s) {
 	return meters(s);
 }
 
-template<class Rep, class Ratio = std::ratio<1>>
-struct Revolutions
-{
-	using rep = Rep; // representation
-	using ratio = Ratio; // Ratio to 1 revolution
-
-	constexpr Revolutions() = default;
-	constexpr explicit Revolutions(Rep _x) : x(_x) {}
-
-	template<class Rep2>
-	constexpr explicit Revolutions(Rep2 _x) : x(_x) {}
-
-	template<class Rep2, class Period2, class relative_ratio = std::ratio_divide<Period2, Ratio>>
-	constexpr Revolutions(const Revolutions<Rep2, Period2>& d)
-		: x(d.x* relative_ratio::num / relative_ratio::den)
-	{
-	}
-
-	Revolutions& operator=(const Revolutions& other) = default;
-
-	constexpr auto count() const { return x; }
-
-	static constexpr Revolutions zero() noexcept { Revolutions d; d.x = 0; return d; }
-
-	constexpr auto operator+(Revolutions d) const
-	{
-		Revolutions result;
-		result.x = x + d.x;
-		return result;
-	}
-
-	constexpr auto operator-(Revolutions d) const
-	{
-		Revolutions result;
-		result.x = x - d.x;
-		return result;
-	}
-
-	constexpr auto operator*(Rep k) const
-	{
-		Revolutions result;
-		result.x *= k;
-		return result;
-	}
-
-	constexpr auto operator/(Rep k) const
-	{
-		Distance result;
-		result.x /= k;
-		return result;
-	}
-
-	auto& operator+=(Revolutions d)
-	{
-		x += d.x;
-		return *this;
-	}
-
-	auto& operator-=(Revolutions d)
-	{
-		x -= d.x;
-		return *this;
-	}
-
-	auto& operator*=(Revolutions k)
-	{
-		x *= k;
-		return *this;
-	}
-
-	auto& operator/=(Revolutions k)
-	{
-		x /= k;
-		return *this;
-	}
-
-private:
-	Rep x;
-};
-
 constexpr auto operator""_rev(unsigned long long s) {
-	return Revolutions(s);
+	return Revolutions<int32_t>(s);
+}
+
+// Operations with mixed units
+template<class Dist_t, class Time_t>
+constexpr auto operator*(Dist_t dist, Time_t t)
+{
+	using SpeedRep = decltype(dist.count() * t.count());
+	using SpeedPeriod = std::ratio_multiply<Dist_t::period, Time_t::period>;
+	return Speed<SpeedRep, SpeedPeriod>(dist.count() * t.count());
+}
+
+template<class Dist_t, class Time_t>
+constexpr auto operator/(Dist_t dist, Time_t t)
+{
+	using SpeedRep = decltype(dist.count() / t.count());
+	using SpeedPeriod = std::ratio_divide<Dist_t::period, Time_t::period>;
+	return Speed<SpeedRep, SpeedPeriod>(dist.count() / t.count());
 }

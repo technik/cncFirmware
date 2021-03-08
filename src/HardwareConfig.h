@@ -23,7 +23,8 @@
 #include "units.h"
 
 // Stepper motor steps
-using MotorSteps = Revolutions<int32_t>;
+constexpr int microSteppingFactor = 16;
+using MotorSteps = Revolutions<int32_t,std::ratio<1/200*microSteppingFactor>>;
 
 constexpr auto operator""_steps(unsigned long long s) {
 	return MotorSteps(s);
