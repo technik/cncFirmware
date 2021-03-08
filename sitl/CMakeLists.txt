@@ -9,10 +9,13 @@ add_executable(cncSITL
 	Arduino.cpp
 	../src/AnalogJoystick.h
 	../src/GCode.h
+	../src/gCodeInstructions.h
+	../src/HardwareConfig.h
 	../src/main.cpp
 	../src/motionController.cpp
 	../src/motionController.h
 	../src/stepperDriver.h
+	../src/units.h
 	../src/vector.h)
 
 target_compile_definitions(cncSITL PRIVATE SITL)

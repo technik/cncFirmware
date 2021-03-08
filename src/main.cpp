@@ -16,7 +16,6 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#define _INC_TIME // Disable unintentional include of time.h in WIN32, which redefines clock
 #include <Arduino.h>
 #include <hal/gpio_pin.h>
 #include <staticRingBuffer.h>
@@ -27,15 +26,15 @@
 #include "AnalogJoystick.h"
 #include "motionController.h"
 #include "GCode.h"
+#include "gCodeInstructions.h"
 #include "clock.h"
 
 using namespace etl::hal;
 using namespace etl;
 using namespace std::chrono_literals;
 
-using clock = SystemClock;
-using time_point = clock::time_point;
-using duration = clock::duration;
+using time_point = SystemClock::time_point;
+using duration = SystemClock::duration;
 
 LedPin gLed;
 
@@ -257,13 +256,6 @@ void setup() {
 
 bool moving = false;
 
-constexpr int32_t XstepsPerMM = 200 * 16 / 2;
-constexpr int32_t YstepsPerMM = int32_t(200 * 16 / (13*2*3.14159f));
-constexpr int32_t ZstepsPerMM = 200 * 16 / 2;
-
-constexpr int32_t kMaxSpeedX = 10; // mm/s
-constexpr duration kMinPeriodX = std::chrono::microseconds(int32_t(1'000'000.f/(kMaxSpeedX * XstepsPerMM) + 0.5f)); // mm/s
-
 void loop()
 {
 	// Consume data from the serial port
@@ -294,19 +286,7 @@ void loop()
 				}
 				else if(op.opCode == 1) // Move
 				{
-					auto targetPos = gMotionController.getMotorPositions();
-					auto srcPos = targetPos;
-					if (op.argument[0] != MotionController<SystemClock>::kUnknownPos)
-						targetPos.x() = op.argument[0] * XstepsPerMM;
-
-					if (op.argument[1] != MotionController<SystemClock>::kUnknownPos)
-						targetPos.y() = op.argument[1];
-
-					if (op.argument[2] != MotionController<SystemClock>::kUnknownPos)
-						targetPos.x() = op.argument[2];
-
-					auto dt = kMinPeriodX * abs(max(1, targetPos.x() - srcPos.x()));
-					gMotionController.setLinearTarget(targetPos, std::chrono::duration_cast<std::chrono::milliseconds>(dt));
+					G1_linearMove(gMotionController, op);
 					moving = true;
 				}
 			}
