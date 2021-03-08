@@ -16,6 +16,7 @@
 #pragma once
 
 #include <ratio>
+#include <chrono> // for speed units
 
 template<class Rep, class Ratio = std::ratio<1>>
 struct Distance
@@ -31,11 +32,11 @@ struct Distance
 
 	template<class Rep2, class Period2, class relative_ratio = std::ratio_divide<Period2, Ratio>>
 	constexpr Distance(const Distance<Rep2, Period2>& d)
-		: m_count(d.count() * relative_ratio::num / relative_ratio::den)
+		: x(d.x * relative_ratio::num / relative_ratio::den)
 	{
 	}
 
-	duration& operator=(const duration& other) = default;
+	Distance& operator=(const Distance& other) = default;
 	
 	constexpr auto count() const { return x; }
 
@@ -116,4 +117,88 @@ constexpr auto operator""_cm(unsigned long long s) {
 
 constexpr auto operator""_m(unsigned long long s) {
 	return meters(s);
+}
+
+template<class Rep, class Ratio = std::ratio<1>>
+struct Revolutions
+{
+	using rep = Rep; // representation
+	using ratio = Ratio; // Ratio to 1 revolution
+
+	constexpr Revolutions() = default;
+	constexpr explicit Revolutions(Rep _x) : x(_x) {}
+
+	template<class Rep2>
+	constexpr explicit Revolutions(Rep2 _x) : x(_x) {}
+
+	template<class Rep2, class Period2, class relative_ratio = std::ratio_divide<Period2, Ratio>>
+	constexpr Revolutions(const Revolutions<Rep2, Period2>& d)
+		: x(d.x* relative_ratio::num / relative_ratio::den)
+	{
+	}
+
+	Revolutions& operator=(const Revolutions& other) = default;
+
+	constexpr auto count() const { return x; }
+
+	static constexpr Revolutions zero() noexcept { Revolutions d; d.x = 0; return d; }
+
+	constexpr auto operator+(Revolutions d) const
+	{
+		Revolutions result;
+		result.x = x + d.x;
+		return result;
+	}
+
+	constexpr auto operator-(Revolutions d) const
+	{
+		Revolutions result;
+		result.x = x - d.x;
+		return result;
+	}
+
+	constexpr auto operator*(Rep k) const
+	{
+		Revolutions result;
+		result.x *= k;
+		return result;
+	}
+
+	constexpr auto operator/(Rep k) const
+	{
+		Distance result;
+		result.x /= k;
+		return result;
+	}
+
+	auto& operator+=(Revolutions d)
+	{
+		x += d.x;
+		return *this;
+	}
+
+	auto& operator-=(Revolutions d)
+	{
+		x -= d.x;
+		return *this;
+	}
+
+	auto& operator*=(Revolutions k)
+	{
+		x *= k;
+		return *this;
+	}
+
+	auto& operator/=(Revolutions k)
+	{
+		x /= k;
+		return *this;
+	}
+
+private:
+	Rep x;
+};
+
+constexpr auto operator""_rev(unsigned long long s) {
+	return Revolutions(s);
 }
