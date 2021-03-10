@@ -27,7 +27,7 @@ void G1_linearMove(MotionController& motionController, const GCodeOperation& op)
 	auto targetPos = motionController.getMotorPositions();
 	auto srcPos = targetPos;
 	if (op.argument[0] != MotionController::kUnknownPos)
-		targetPos.x() = op.argument[0] * XstepsPerMM;
+		targetPos.x() = op.argument[0] * kSteps_mmX.count();
 
 	if (op.argument[1] != MotionController::kUnknownPos)
 		targetPos.y() = op.argument[1];

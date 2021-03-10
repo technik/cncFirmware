@@ -21,6 +21,7 @@
 template<class UnitTag, class Rep, class Ratio = std::ratio<1>>
 struct Unit
 {
+	using unit_tag = UnitTag;
 	using rep = Rep; // representation
 	using period = Ratio; // Ratio to 1m (S.I. reference units)
 
@@ -31,8 +32,8 @@ struct Unit
 	constexpr explicit Unit(Rep2 _x) : x(_x) {}
 
 	template<class Rep2, class Period2, class relative_ratio = std::ratio_divide<Period2, Ratio>>
-	constexpr Unit(const Unit<UnitTag, Rep2, Period2>& d)
-		: x(d.x * relative_ratio::num / relative_ratio::den)
+	constexpr explicit Unit(Unit<UnitTag, Rep2, Period2> d)
+		: x(d.count() * relative_ratio::num / relative_ratio::den)
 	{
 	}
 
@@ -100,7 +101,28 @@ private:
 
 struct DistanceUnitTag {};
 struct RevolutionUnitTag {};
-struct SpeedUnitTag {};
+struct TimeUnitTag {};
+
+template<class NumT, class DenT>
+struct UnitRatioTag {
+	using num = NumT;
+	using den = DenT;
+};
+
+using SpeedUnitTag = UnitRatioTag<DistanceUnitTag, TimeUnitTag>;
+
+template<class UnitT>
+struct unit_traits
+{
+	using tag = UnitT::unit_tag;
+};
+
+// Unit adaptor to be able to use std::chrono::duration in unit operations
+template<class Rep, class Ratio>
+struct unit_traits<std::chrono::duration<Rep, Ratio>>
+{
+	using tag = TimeUnitTag;
+};
 
 // Distance unit (S.I. units), ratio relative to 1 meter
 template<class Rep, class Ratio = std::ratio<1>>
@@ -141,13 +163,6 @@ constexpr auto operator""_rev(unsigned long long s) {
 }
 
 // Operations with mixed units
-template<class Dist_t, class Time_t>
-constexpr auto operator*(Dist_t dist, Time_t t)
-{
-	using SpeedRep = decltype(dist.count() * t.count());
-	using SpeedPeriod = std::ratio_multiply<Dist_t::period, Time_t::period>;
-	return Speed<SpeedRep, SpeedPeriod>(dist.count() * t.count());
-}
 
 template<class Dist_t, class Time_t>
 constexpr auto operator/(Dist_t dist, Time_t t)
@@ -155,4 +170,44 @@ constexpr auto operator/(Dist_t dist, Time_t t)
 	using SpeedRep = decltype(dist.count() / t.count());
 	using SpeedPeriod = std::ratio_divide<Dist_t::period, Time_t::period>;
 	return Speed<SpeedRep, SpeedPeriod>(dist.count() / t.count());
+}
+
+template<
+	class DivT, class DenT,
+	class Rep1 = DivT::rep, class Period1 = DivT::period,
+	class Rep2 = DenT::rep, class Period2 = DenT::period,
+	class NumTag = unit_traits<DivT>::tag::num, class DenTag = unit_traits<DenT>::tag
+>
+constexpr auto operator*(
+	DivT a,
+	DenT b)
+{
+	using ResultRep = decltype(a.count() * b.count());
+	using ResultPeriod = std::ratio_multiply<Period1, Period2>;
+	return Unit<NumTag, ResultRep, ResultPeriod>(a.count() * b.count());
+}
+
+template< // Num/Mid * Mid/Den -> Num/Den
+	class NumTag, class Rep1, class Period1,
+	class DenTag, class Rep2, class Period2,
+	class MidTag
+>
+constexpr auto operator*(
+	Unit<UnitRatioTag<NumTag, MidTag>, Rep1, Period1> a,
+	Unit<UnitRatioTag<MidTag, DenTag>, Rep2, Period2> b)
+{
+	using ResultRep = decltype(a.count()* b.count());
+	using ResultPeriod = std::ratio_multiply<Period1, Period2>;
+	return Unit<UnitRatioTag<NumTag,DenTag>, ResultRep, ResultPeriod>(a.count() * b.count());
+}
+
+template<class NumT, class DenT,
+	class NumTag = unit_traits<NumT>::tag, class NumRep = NumT::rep, class NumPeriod = NumT::period,
+	class DenTag = unit_traits<DenT>::tag, class DenRep = DenT::rep, class DenPeriod = DenT::period
+>
+constexpr auto operator/(Unit<NumTag, NumRep, NumPeriod> a, Unit<DenTag, DenRep, DenPeriod> b)
+{
+	using ResultRep = decltype(a.count() / b.count());
+	using ResultPeriod = std::ratio_divide<NumPeriod, DenPeriod>;
+	return Unit<UnitRatioTag<NumTag, DenTag>, ResultRep, ResultPeriod>(a.count() / b.count());
 }

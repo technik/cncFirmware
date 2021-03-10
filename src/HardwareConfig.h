@@ -22,17 +22,25 @@
 #include <cstdint>
 #include "units.h"
 
+using namespace std::chrono_literals;
+
 // Stepper motor steps
 constexpr int microSteppingFactor = 16;
-using MotorSteps = Revolutions<int32_t,std::ratio<1/200*microSteppingFactor>>;
+constexpr int microStepsPerRevolution = 200 * microSteppingFactor;
+using MotorSteps = Revolutions<int32_t,std::ratio<1, microStepsPerRevolution>>;
 
 constexpr auto operator""_steps(unsigned long long s) {
 	return MotorSteps(s);
 }
 
+constexpr auto kSteps_mmX = MotorSteps(1_rev) / 2_mm;
+constexpr auto kSteps_mmY = MotorSteps(int32_t(200 * 16 / (13 * 2 * 3.14159f))) / 1_mm;
+constexpr auto kSteps_mmZ = MotorSteps(1_rev) / 2_mm;
+/*
 constexpr int32_t XstepsPerMM = 200 * 16 / 2;
-constexpr int32_t YstepsPerMM = int32_t(200 * 16 / (13 * 2 * 3.14159f));
+constexpr int32_t YstepsPerMM = int32_t(microStepsPerRevolution / (13 * 2 * 3.14159f));
 constexpr int32_t ZstepsPerMM = 200 * 16 / 2;
-
-constexpr int32_t kMaxSpeedX = 10; // mm/s
-constexpr auto kMinPeriodX = std::chrono::microseconds(int32_t(1'000'000.f / (kMaxSpeedX * XstepsPerMM) + 0.5f)); // mm/s
+*/
+constexpr auto kMaxSpeedX = 10_mm / 1s; // mm/s
+constexpr auto kMaxStepsX = kMaxSpeedX * kSteps_mmX;
+constexpr auto kMinPeriodX = std::chrono::microseconds(int32_t(1'000'000.f / kMaxStepsX.count() + 0.5f)); // mm/s
