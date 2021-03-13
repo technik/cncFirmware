@@ -36,6 +36,11 @@ struct Vector
 	T& operator[](size_t i) { return m[i]; }
 	T operator[](size_t i) const { return m[i]; }
 
+	template<size_t K>
+	T& element() { static_assert(K < N); return m[K]; }
+	template<size_t K>
+	T element() const { static_assert(K < N); return m[K]; }
+
 	Vector() = default;
 	Vector(const Vector&) = default;
 	template<class T2>

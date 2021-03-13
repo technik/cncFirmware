@@ -58,6 +58,24 @@ private:
 	Vec3i m_srcPosition = { kUnknownPos, kUnknownPos , kUnknownPos };
 	Vec3i m_arc = { 0, 0, 0 };
 
+	template<size_t axis_, typename Motor>
+	void stepAxis(Motor& motor, int goal)
+	{
+		if (m_curPosition.element<axis_>() >= 0)
+		{
+			if (goal > m_curPosition.element<axis_>())
+			{
+				motor.step();
+				m_curPosition.element<axis_>()++;
+			}
+			else if (goal < m_curPosition.element<axis_>())
+			{
+				motor.step();
+				m_curPosition.element<axis_>()--;
+			}
+		}
+	}
+
 	XAxisStepper MotorX;
 	YAxisStepper MotorY;
 	ZAxisStepper MotorZ;
@@ -109,21 +127,12 @@ void MotionController<clock_t>::step()
 	//tlog.push_back({ dt,instantTarget.x() });
 	if (instantTarget != m_curPosition)
 	{
-		//std::cout << "dt:" << dt.count() << ",ix:" << instantTarget.x() << ",x:" << m_curPosition.x() << std::endl;
 		// step X
-		if (m_curPosition.x() >= 0)
-		{
-			if (instantTarget.x() > m_curPosition.x())
-			{
-				MotorX.step();
-				m_curPosition.x()++;
-			}
-			else if (instantTarget.x() < m_curPosition.x())
-			{
-				MotorX.step();
-				m_curPosition.x()--;
-			}
-		}
+		stepAxis<0>(MotorX, instantTarget.x());
+		// step Y
+		stepAxis<1>(MotorY, instantTarget.y());
+		// step Z
+		stepAxis<2>(MotorZ, instantTarget.z());
 	}
 }
 
