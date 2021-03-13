@@ -59,7 +59,7 @@ void testPositiveMotionX(int32_t steps, std::chrono::milliseconds deadline)
 	{
 		mc.step();
 	}
-	// Move a short distance along the X axis
+	// Move some distance along the X axis
 	const auto targetPos = Vec3i(steps,0,0);
 	mc.setLinearTarget(targetPos, deadline);
 	auto t0 = clock::now();
@@ -73,6 +73,41 @@ void testPositiveMotionX(int32_t steps, std::chrono::milliseconds deadline)
 	assert(targetPos == finalPos);
 }
 
+void testRoundTripMotion(int32_t steps, std::chrono::milliseconds deadline)
+{
+	using clock = RealTimeClock;
+	MotionController<clock> mc;
+	mc.start();
+	mc.goHome();
+	while (!mc.finished())
+	{
+		mc.step();
+	}
+	// Move some distance along the X axis
+	const auto targetPos = Vec3i(steps, 0, 0);
+	mc.setLinearTarget(targetPos, deadline);
+	auto t0 = clock::now();
+	while (clock::now() - t0 <= deadline + 1ms)
+	{
+		if (mc.finished())
+			break;
+		mc.step();
+	}
+	auto finalPos = mc.getMotorPositions();
+	assert(targetPos == finalPos);
+	// Retract the traveled distance
+	mc.setLinearTarget(Vec3i(0, 0, 0), deadline);
+	t0 = clock::now();
+	while (clock::now() - t0 <= deadline + 1ms)
+	{
+		if (mc.finished())
+			break;
+		mc.step();
+	}
+	finalPos = mc.getMotorPositions();
+	assert(Vec3i(0,0,0) == finalPos);
+}
+
 int main()
 {
 	//testStartUnknown();
@@ -82,6 +117,9 @@ int main()
 	testPositiveMotionX(1, 10ms);
 	testPositiveMotionX(100, 1001ms);
 	testPositiveMotionX(80000, 10'001ms);
+
+	testRoundTripMotion(100, 1001ms);
+	testRoundTripMotion(8000, 10'001ms);
 	// Initialize the mock clock
 	MockClockSrc::currentTime = MockClockSrc::time_point(1ms);
 	MockClockSrc::now();

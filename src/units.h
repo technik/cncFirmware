@@ -114,7 +114,7 @@ using SpeedUnitTag = UnitRatioTag<DistanceUnitTag, TimeUnitTag>;
 template<class UnitT>
 struct unit_traits
 {
-	using tag = UnitT::unit_tag;
+	using tag = typename UnitT::unit_tag;
 };
 
 // Unit adaptor to be able to use std::chrono::duration in unit operations
@@ -168,7 +168,7 @@ template<class Dist_t, class Time_t>
 constexpr auto operator/(Dist_t dist, Time_t t)
 {
 	using SpeedRep = decltype(dist.count() / t.count());
-	using SpeedPeriod = std::ratio_divide<Dist_t::period, Time_t::period>;
+	using SpeedPeriod = std::ratio_divide<typename Dist_t::period, typename Time_t::period>;
 	return Speed<SpeedRep, SpeedPeriod>(dist.count() / t.count());
 }
 

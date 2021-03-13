@@ -33,9 +33,9 @@ constexpr auto operator""_steps(unsigned long long s) {
 	return MotorSteps(s);
 }
 
-constexpr auto kSteps_mmX = MotorSteps(1_rev) / 2_mm;
+constexpr auto kSteps_mmX = MotorSteps(1_rev) / 8_mm;
 constexpr auto kSteps_mmY = MotorSteps(int32_t(200 * 16 / (13 * 2 * 3.14159f))) / 1_mm;
-constexpr auto kSteps_mmZ = MotorSteps(1_rev) / 2_mm;
+constexpr auto kSteps_mmZ = MotorSteps(1_rev) / 8_mm;
 /*
 constexpr int32_t XstepsPerMM = 200 * 16 / 2;
 constexpr int32_t YstepsPerMM = int32_t(microStepsPerRevolution / (13 * 2 * 3.14159f));

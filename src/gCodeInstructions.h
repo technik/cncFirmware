@@ -35,6 +35,6 @@ void G1_linearMove(MotionController& motionController, const GCodeOperation& op)
 	if (op.argument[2] != MotionController::kUnknownPos)
 		targetPos.x() = op.argument[2];
 
-	auto dt = kMinPeriodX * abs(max(1, targetPos.x() - srcPos.x()));
+	auto dt = kMinPeriodX * max(1, abs(targetPos.x() - srcPos.x()));
 	motionController.setLinearTarget(targetPos, std::chrono::duration_cast<std::chrono::milliseconds>(dt));
 }

@@ -99,12 +99,6 @@ void MotionController<clock_t>::step()
 	if (finished())
 		return;
 
-	// Check end stops
-	if (EndStopMinX.isHigh())
-	{
-		//m_curPosition.x() = 0;
-	}
-
 	// Compute instant target
 	auto t = clock::now();
 	auto dt = std::chrono::duration_cast<std::chrono::milliseconds>(t - m_t0);
@@ -144,9 +138,18 @@ void MotionController<clock_t>::setLinearTarget(const Vec3i& targetPos, std::chr
 	m_targetPosition.z() = max(m_targetPosition.z(), 0);
 	m_srcPosition = m_curPosition;
 	m_arc = m_targetPosition - m_srcPosition;
-	MotorX.setDir(m_targetPosition.x() >= m_curPosition.x());
-	MotorY.setDir(m_targetPosition.y() >= m_curPosition.y());
-	MotorZ.setDir(m_targetPosition.z() >= m_curPosition.z());
+	MotorX.setDir(m_arc.x() >= 0);
+	MotorY.setDir(m_arc.y() >= 0);
+	MotorZ.setDir(m_arc.z() >= 0);
+
+	/*Serial.print("tx:");
+	Serial.print(m_targetPosition.x());
+	Serial.print(",cx:");
+	Serial.print(m_curPosition.x());
+	Serial.print(",ax:");
+	Serial.print(m_arc.x());
+	Serial.print(",dt:");
+	Serial.println(dt.count());*/
 
 	m_t0 = clock::now();
 	m_dt = dt;
