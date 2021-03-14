@@ -38,6 +38,7 @@ public:
 	using XMinEndStop = Pin3::In;
 
 	static constexpr int32_t kUnknownPos = int32_t(1ul << 31);
+	static constexpr auto UnkownStep = MotorSteps(kUnknownPos);
 
 	MotionController();
 	void start(); // Engage motors
@@ -45,10 +46,10 @@ public:
 
 	void step();
 	bool finished() const { return m_targetPosition == m_curPosition; }
-	const Vec3i& getMotorPositions() const { return m_curPosition; }
+	const Vec3step& getMotorPositions() const { return m_curPosition; }
 
 	// Motion operations
-	void setLinearTarget(const Vec3i& targetPos, std::chrono::milliseconds dt);
+	void setLinearTarget(const Vec3step& targetPos, std::chrono::milliseconds dt);
 	void goHome();
 	// TODO: Arc movements
 
@@ -61,13 +62,13 @@ private:
 	time m_t0; // Motion start time
 	std::chrono::milliseconds m_dt{};
 
-	Vec3i m_curPosition = { kUnknownPos, kUnknownPos , kUnknownPos };
-	Vec3i m_targetPosition = { kUnknownPos, kUnknownPos , kUnknownPos };
-	Vec3i m_srcPosition = { kUnknownPos, kUnknownPos , kUnknownPos };
-	Vec3i m_arc = { 0, 0, 0 };
+	Vec3step m_curPosition = { UnkownStep, UnkownStep , UnkownStep };
+	Vec3step m_targetPosition = { UnkownStep, UnkownStep , UnkownStep };
+	Vec3step m_srcPosition = { UnkownStep, UnkownStep , UnkownStep };
+	Vec3step m_arc = {};
 
 	template<size_t axis_, typename Motor>
-	void stepAxis(Motor& motor, int goal)
+	void stepAxis(Motor& motor, MotorSteps goal)
 	{
 		if (m_curPosition.element<axis_>() >= 0)
 		{
@@ -129,7 +130,7 @@ void MotionController<clock_t>::step()
 	auto t = clock::now();
 	auto dt = std::chrono::duration_cast<std::chrono::milliseconds>(t - m_t0);
 	
-	Vec3i dPos = m_arc * dt.count() / m_dt.count();
+	Vec3step dPos = m_arc * dt.count() / m_dt.count();
 	// Clamp target
 	if (abs(dPos.x()) > m_arc.x()) dPos.x() = m_arc.x();
 	if (abs(dPos.y()) > m_arc.y()) dPos.y() = m_arc.y();
@@ -150,19 +151,19 @@ void MotionController<clock_t>::step()
 }
 
 template<class clock_t>
-void MotionController<clock_t>::setLinearTarget(const Vec3i& targetPos, std::chrono::milliseconds dt)
+void MotionController<clock_t>::setLinearTarget(const Vec3step& targetPos, std::chrono::milliseconds dt)
 {
 	if (dt.count() == 0)
 		return; // Avoid impossible operations and division by 0
 	m_targetPosition = targetPos;
-	m_targetPosition.x() = max(m_targetPosition.x(), 0);
-	m_targetPosition.y() = max(m_targetPosition.y(), 0);
-	m_targetPosition.z() = max(m_targetPosition.z(), 0);
+	m_targetPosition.x() = max(m_targetPosition.x(), MotorSteps(0));
+	m_targetPosition.y() = max(m_targetPosition.y(), MotorSteps(0));
+	m_targetPosition.z() = max(m_targetPosition.z(), MotorSteps(0));
 	m_srcPosition = m_curPosition;
 	m_arc = m_targetPosition - m_srcPosition;
-	MotorX.setDir(m_arc.x() >= 0);
-	MotorY.setDir(m_arc.y() >= 0);
-	MotorZ.setDir(m_arc.z() >= 0);
+	MotorX.setDir(m_arc.x() >= MotorSteps(0));
+	MotorY.setDir(m_arc.y() >= MotorSteps(0));
+	MotorZ.setDir(m_arc.z() >= MotorSteps(0));
 
 	m_dt = dt;
 
@@ -177,17 +178,17 @@ void MotionController<clock_t>::goHome()
 
 	m_targetPosition = Vec3i(0, 0, 0);
 	if (m_curPosition.x() == kUnknownPos)
-		m_curPosition.x() = 0;
+		m_curPosition.x() = MotorSteps(0);
 	if (m_curPosition.y() == kUnknownPos)
-		m_curPosition.y() = 0;
+		m_curPosition.y() = MotorSteps(0);
 	if (m_curPosition.z() == kUnknownPos)
-		m_curPosition.z() = 0;
+		m_curPosition.z() = MotorSteps(0);
 	m_srcPosition = m_curPosition;
 	m_arc = m_targetPosition - m_srcPosition;
 
-	auto dtX = kMinStepPeriodX * abs(m_arc.x());
-	auto dtY = kMinStepPeriodY * abs(m_arc.y());
-	auto dtZ = kMinStepPeriodZ * abs(m_arc.z());
+	auto dtX = kMinStepPeriodX * abs(m_arc.x().count());
+	auto dtY = kMinStepPeriodY * abs(m_arc.y().count());
+	auto dtZ = kMinStepPeriodZ * abs(m_arc.z().count());
 	auto maxDt = max(dtX, max(dtY, dtZ));
 	m_dt = max(1ms, std::chrono::duration_cast<std::chrono::milliseconds>(maxDt));
 
@@ -196,29 +197,25 @@ void MotionController<clock_t>::goHome()
 	MotorZ.setDir(false);
 }
 
+namespace mc_impl
+{
+	inline void printAxis(MotorSteps target, MotorSteps current, MotorSteps arc)
+	{
+		Serial.print("tx:");
+		Serial.print(target.count());
+		Serial.print(",cx:");
+		Serial.print(current.count());
+		Serial.print(",ax:");
+		Serial.println(arc.count());
+	}
+}
+
 template<class clock_t>
 void MotionController<clock_t>::printState() const
 {
-	Serial.print("tx:");
-	Serial.print(m_targetPosition.x());
-	Serial.print(",cx:");
-	Serial.print(m_curPosition.x());
-	Serial.print(",ax:");
-	Serial.println(m_arc.x());
-
-	Serial.print("ty:");
-	Serial.print(m_targetPosition.y());
-	Serial.print(",cy:");
-	Serial.print(m_curPosition.y());
-	Serial.print(",ay:");
-	Serial.println(m_arc.y());
-
-	Serial.print("tz:");
-	Serial.print(m_targetPosition.z());
-	Serial.print(",cz:");
-	Serial.print(m_curPosition.z());
-	Serial.print(",az:");
-	Serial.println(m_arc.z());
+	mc_impl::printAxis(m_targetPosition.x(), m_curPosition.x(), m_arc.x());
+	mc_impl::printAxis(m_targetPosition.y(), m_curPosition.y(), m_arc.y());
+	mc_impl::printAxis(m_targetPosition.z(), m_curPosition.z(), m_arc.z());
 
 	Serial.print("dt:");
 	Serial.println(m_dt.count());

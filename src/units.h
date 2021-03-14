@@ -38,6 +38,66 @@ struct Unit
 	}
 
 	Unit& operator=(const Unit& other) = default;
+
+	constexpr bool operator==(Unit y) const
+	{
+		return x == y.x;
+	}
+
+	constexpr bool operator!=(Unit y) const
+	{
+		return x != y.x;
+	}
+
+	constexpr bool operator==(Rep y) const
+	{
+		return x == y;
+	}
+
+	constexpr bool operator!=(Rep y) const
+	{
+		return x != y;
+	}
+
+	constexpr bool operator<(Unit y) const
+	{
+		return x < y.x;
+	}
+
+	constexpr bool operator>(Unit y) const
+	{
+		return x > y.x;
+	}
+
+	constexpr bool operator<(Rep y) const
+	{
+		return x < y;
+	}
+
+	constexpr bool operator>(Rep y) const
+	{
+		return x > y;
+	}
+
+	constexpr bool operator<=(Unit y) const
+	{
+		return x <= y.x;
+	}
+
+	constexpr bool operator>=(Unit y) const
+	{
+		return x >= y.x;
+	}
+
+	constexpr bool operator<=(Rep y) const
+	{
+		return x <= y;
+	}
+
+	constexpr bool operator>=(Rep y) const
+	{
+		return x >= y;
+	}
 	
 	constexpr auto count() const { return x; }
 
@@ -45,30 +105,61 @@ struct Unit
 
 	constexpr auto operator+(Unit d) const
 	{
-		Unit result;
+		Unit result(*this);
 		result.x = x + d.x;
 		return result;
 	}
 
 	constexpr auto operator-(Unit d) const
 	{
-		Unit result;
+		Unit result(*this);
 		result.x = x - d.x;
 		return result;
 	}
 
 	constexpr auto operator*(Rep k) const
 	{
-		Unit result;
+		Unit result(*this);
 		result.x *= k;
 		return result;
 	}
 
 	constexpr auto operator/(Rep k) const
 	{
-		Unit result;
+		Unit result(*this);
 		result.x /= k;
 		return result;
+	}
+
+	constexpr auto operator-() const
+	{
+		Unit result(*this);
+		result.x *= -1;
+		return result;
+	}
+
+	auto& operator++()
+	{
+		++x;
+		return *this;
+	}
+
+	auto& operator--()
+	{
+		--x;
+		return *this;
+	}
+
+	auto operator++(int)
+	{
+		x++;
+		return *this;
+	}
+
+	auto operator--(int)
+	{
+		x--;
+		return *this;
 	}
 
 	auto& operator+=(Unit d)
@@ -168,11 +259,14 @@ constexpr auto operator""_rev(unsigned long long s) {
 
 // Operations with mixed units
 
-template<class Dist_t, class Time_t>
+template<
+	class Dist_t, class Time_t,
+	class Period1 = Dist_t::period, class Period2 = Time_t::period
+>
 constexpr auto operator/(Dist_t dist, Time_t t)
 {
 	using SpeedRep = decltype(dist.count() / t.count());
-	using SpeedPeriod = std::ratio_divide<typename Dist_t::period, typename Time_t::period>;
+	using SpeedPeriod = std::ratio_divide<Period1, Period2>;
 	return Speed<SpeedRep, SpeedPeriod>(dist.count() / t.count());
 }
 

@@ -27,9 +27,9 @@ void testStartUnknown()
 	MotionController<RealTimeClock> mc;
 	mc.start();
 	auto startPos = mc.getMotorPositions();
-	assert(startPos.x() == MotionController<RealTimeClock>::kUnknownPos);
-	assert(startPos.y() == MotionController<RealTimeClock>::kUnknownPos);
-	assert(startPos.z() == MotionController<RealTimeClock>::kUnknownPos);
+	assert(startPos.x() == MotionController<RealTimeClock>::UnkownStep);
+	assert(startPos.y() == MotionController<RealTimeClock>::UnkownStep);
+	assert(startPos.z() == MotionController<RealTimeClock>::UnkownStep);
 	// Also check there is no ongoing operation on start
 	assert(mc.finished());
 }
@@ -60,7 +60,7 @@ void testPositiveMotionX(int32_t steps, std::chrono::milliseconds deadline)
 		mc.step();
 	}
 	// Move some distance along the X axis
-	const auto targetPos = Vec3i(steps,0,0);
+	const auto targetPos = Vec3<MotorSteps>(steps,0,0);
 	mc.setLinearTarget(targetPos, deadline);
 	auto t0 = clock::now();
 	while (clock::now() - t0 <= deadline+1ms)
@@ -84,7 +84,7 @@ void testRoundTripMotion(int32_t steps, std::chrono::milliseconds deadline)
 		mc.step();
 	}
 	// Move some distance along the X axis
-	const auto targetPos = Vec3i(steps, 0, 0);
+	const auto targetPos = Vec3<MotorSteps>(steps, 0, 0);
 	mc.setLinearTarget(targetPos, deadline);
 	auto t0 = clock::now();
 	while (clock::now() - t0 <= deadline + 1ms)
@@ -105,7 +105,7 @@ void testRoundTripMotion(int32_t steps, std::chrono::milliseconds deadline)
 		mc.step();
 	}
 	finalPos = mc.getMotorPositions();
-	assert(Vec3i(0,0,0) == finalPos);
+	assert(Vec3<MotorSteps>(0,0,0) == finalPos);
 }
 
 int main()

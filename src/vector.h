@@ -53,7 +53,12 @@ struct Vector
 	}
 	Vector(T _x, T _y) : m{ _x, _y } { static_assert(N > 1); }
 	Vector(T _x, T _y, T _z) : m{ _x, _y,_z } { static_assert(N > 2); }
-	Vector(T _x, T _y, T _z, T _w) : m{ _x, _y, _w, _w } { static_assert(N > 3); }
+	Vector(T _x, T _y, T _z, T _w) : m{ _x, _y, _z, _w } { static_assert(N > 3); }
+
+	template<class T2>
+	Vector(T2 _x, T2 _y, T2 _z) : m{ T(_x), T(_y), T(_z) } { static_assert(N > 2); }
+	template<class T2>
+	Vector(T2 _x, T2 _y, T2 _z, T2 _w) : m{ T(_x), T(_y), T(_z), T(_w) } { static_assert(N > 3); }
 
 	T squareNorm() const {
 		auto res = T(0);
@@ -78,7 +83,7 @@ auto operator*(Vector<T1,N> v, T2 x)
 	Vector<MulT, N> res;
 	for (int i = 0; i < N; ++i)
 	{
-		assert(x<=1 || (LONG_MAX / x > v[i]));
+		assert(x<=T2(1) || (T1(LONG_MAX / x) > v[i]));
 		res[i] = v[i]*x;
 	}
 	return res;

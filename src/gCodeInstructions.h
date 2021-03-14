@@ -27,17 +27,17 @@ void G1_linearMove(MotionController& motionController, const GCodeOperation& op)
 	auto targetPos = motionController.getMotorPositions();
 	auto srcPos = targetPos;
 	if (op.argument[0] != MotionController::kUnknownPos)
-		targetPos.x() = op.argument[0] * kSteps_mmX.count();
+		targetPos.x() = MotorSteps(op.argument[0] * kSteps_mmX.count());
 
 	if (op.argument[1] != MotionController::kUnknownPos)
-		targetPos.y() = op.argument[1] * kSteps_mmY.count();
+		targetPos.y() = MotorSteps(op.argument[1] * kSteps_mmY.count());
 
 	if (op.argument[2] != MotionController::kUnknownPos)
-		targetPos.z() = op.argument[2] * kSteps_mmZ.count();
+		targetPos.z() = MotorSteps(op.argument[2] * kSteps_mmZ.count());
 
-	auto dtX = kMinStepPeriodX * abs(targetPos.x() - srcPos.x());
-	auto dtY = kMinStepPeriodY * abs(targetPos.y() - srcPos.y());
-	auto dtZ = kMinStepPeriodZ * abs(targetPos.z() - srcPos.z());
+	auto dtX = kMinStepPeriodX * abs(targetPos.x() - srcPos.x()).count();
+	auto dtY = kMinStepPeriodY * abs(targetPos.y() - srcPos.y()).count();
+	auto dtZ = kMinStepPeriodZ * abs(targetPos.z() - srcPos.z()).count();
 	auto maxDt = max(dtX, max(dtY, dtZ));
 	auto maxMillis = max(1ms, std::chrono::duration_cast<std::chrono::milliseconds>(maxDt));
 	motionController.setLinearTarget(targetPos, maxMillis);
