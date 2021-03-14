@@ -35,10 +35,5 @@ void G1_linearMove(MotionController& motionController, const GCodeOperation& op)
 	if (op.argument[2] != MotionController::kUnknownPos)
 		targetPos.z() = MotorSteps(op.argument[2] * kSteps_mmZ.count());
 
-	auto dtX = kMinStepPeriodX * abs(targetPos.x() - srcPos.x()).count();
-	auto dtY = kMinStepPeriodY * abs(targetPos.y() - srcPos.y()).count();
-	auto dtZ = kMinStepPeriodZ * abs(targetPos.z() - srcPos.z()).count();
-	auto maxDt = max(dtX, max(dtY, dtZ));
-	auto maxMillis = max(1ms, std::chrono::duration_cast<std::chrono::milliseconds>(maxDt));
-	motionController.setLinearTarget(targetPos, maxMillis);
+	motionController.setLinearTarget(targetPos);
 }

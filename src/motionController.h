@@ -49,7 +49,7 @@ public:
 	const Vec3step& getMotorPositions() const { return m_curPosition; }
 
 	// Motion operations
-	void setLinearTarget(const Vec3step& targetPos, std::chrono::milliseconds dt);
+	void setLinearTarget(const Vec3step& targetPos);
 	void goHome();
 	// TODO: Arc movements
 
@@ -151,7 +151,7 @@ void MotionController<clock_t>::step()
 }
 
 template<class clock_t>
-void MotionController<clock_t>::setLinearTarget(const Vec3step& targetPos, std::chrono::milliseconds dt)
+void MotionController<clock_t>::setLinearTarget(const Vec3step& targetPos)
 {
 	if (dt.count() == 0)
 		return; // Avoid impossible operations and division by 0
@@ -161,11 +161,12 @@ void MotionController<clock_t>::setLinearTarget(const Vec3step& targetPos, std::
 	m_targetPosition.z() = max(m_targetPosition.z(), MotorSteps(0));
 	m_srcPosition = m_curPosition;
 	m_arc = m_targetPosition - m_srcPosition;
+
 	MotorX.setDir(m_arc.x() >= MotorSteps(0));
 	MotorY.setDir(m_arc.y() >= MotorSteps(0));
 	MotorZ.setDir(m_arc.z() >= MotorSteps(0));
 
-	m_dt = dt;
+	m_dt = linearArcMinDuration(m_arc);
 
 	printState();
 
@@ -185,12 +186,7 @@ void MotionController<clock_t>::goHome()
 		m_curPosition.z() = MotorSteps(0);
 	m_srcPosition = m_curPosition;
 	m_arc = m_targetPosition - m_srcPosition;
-
-	auto dtX = kMinStepPeriodX * abs(m_arc.x().count());
-	auto dtY = kMinStepPeriodY * abs(m_arc.y().count());
-	auto dtZ = kMinStepPeriodZ * abs(m_arc.z().count());
-	auto maxDt = max(dtX, max(dtY, dtZ));
-	m_dt = max(1ms, std::chrono::duration_cast<std::chrono::milliseconds>(maxDt));
+	m_dt = linearArcMinDuration(m_arc);
 
 	MotorX.setDir(false);
 	MotorY.setDir(false);
