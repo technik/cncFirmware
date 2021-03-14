@@ -153,10 +153,9 @@ void MotionController<clock_t>::step()
 template<class clock_t>
 void MotionController<clock_t>::setLinearTarget(const Vec3step& targetPos)
 {
-	m_targetPosition = targetPos;
-	m_targetPosition.x() = max(m_targetPosition.x(), MotorSteps(0));
-	m_targetPosition.y() = max(m_targetPosition.y(), MotorSteps(0));
-	m_targetPosition.z() = max(m_targetPosition.z(), MotorSteps(0));
+	m_targetPosition.x() = max(targetPos.x(), MotorSteps(0));
+	m_targetPosition.y() = max(targetPos.y(), MotorSteps(0));
+	m_targetPosition.z() = max(targetPos.z(), MotorSteps(0));
 	m_srcPosition = m_curPosition;
 	m_arc = m_targetPosition - m_srcPosition;
 
@@ -229,7 +228,6 @@ std::chrono::milliseconds MotionController<clock_t>::linearArcMinDuration(const 
 	auto minTimeZ = kMinStepPeriodZ * stepsZ;
 
 	auto minTravelDt = max(minTimeX, max(minTimeY, minTimeZ));
-	auto minTravelMillis = std::chrono::duration_cast<std::chrono::milliseconds>(minTravelDt);
-	return max(1ms, minTravelMillis);
+	return std::chrono::duration_cast<std::chrono::milliseconds>(minTravelDt);
 }
 
