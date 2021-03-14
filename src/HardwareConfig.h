@@ -29,6 +29,8 @@ constexpr int microSteppingFactor = 16;
 constexpr int microStepsPerRevolution = 200 * microSteppingFactor;
 using MotorSteps = Revolutions<int32_t,std::ratio<1, microStepsPerRevolution>>;
 
+using us_step = RevolutionPeriod<long, std::ratio_divide<std::micro, MotorSteps::period>>;
+
 constexpr auto operator""_steps(unsigned long long s) {
 	return MotorSteps(s);
 }
@@ -49,6 +51,6 @@ constexpr auto kMaxSteps_secX = kMaxSpeedX * kSteps_mmX;
 constexpr auto kMaxSteps_secY = kMaxSpeedY * kSteps_mmY;
 constexpr auto kMaxSteps_secZ = kMaxSpeedZ * kSteps_mmZ;
 
-constexpr auto kMinStepPeriodX = std::chrono::microseconds(int32_t(1'000'000.f / kMaxSteps_secX.count() + 0.5f)); // us/step
-constexpr auto kMinStepPeriodY = std::chrono::microseconds(int32_t(1'000'000.f / kMaxSteps_secY.count() + 0.5f)); // us/step
-constexpr auto kMinStepPeriodZ = std::chrono::microseconds(int32_t(1'000'000.f / kMaxSteps_secZ.count() + 0.5f)); // us/step
+constexpr auto kMinStepPeriodX = us_step(int32_t(1'000'000.f / kMaxSteps_secX.count() + 0.5f)); // us/step
+constexpr auto kMinStepPeriodY = us_step(int32_t(1'000'000.f / kMaxSteps_secY.count() + 0.5f)); // us/step
+constexpr auto kMinStepPeriodZ = us_step(int32_t(1'000'000.f / kMaxSteps_secZ.count() + 0.5f)); // us/step

@@ -56,7 +56,7 @@ public:
 	void printState() const;
 
 	template<class Dist>
-	static std::chrono::microseconds linearArcMinDuration(const Vec3<Dist>& arc);
+	static std::chrono::milliseconds linearArcMinDuration(const Vec3<Dist>& arc);
 
 private:
 	time m_t0; // Motion start time
@@ -153,8 +153,6 @@ void MotionController<clock_t>::step()
 template<class clock_t>
 void MotionController<clock_t>::setLinearTarget(const Vec3step& targetPos)
 {
-	if (dt.count() == 0)
-		return; // Avoid impossible operations and division by 0
 	m_targetPosition = targetPos;
 	m_targetPosition.x() = max(m_targetPosition.x(), MotorSteps(0));
 	m_targetPosition.y() = max(m_targetPosition.y(), MotorSteps(0));
@@ -219,16 +217,16 @@ void MotionController<clock_t>::printState() const
 
 template<class clock_t>
 template<class Dist>
-std::chrono::microseconds MotionController<clock_t>::linearArcMinDuration(const Vec3<Dist>& arc)
+std::chrono::milliseconds MotionController<clock_t>::linearArcMinDuration(const Vec3<Dist>& arc)
 {
 	auto stepsX = MotorSteps(abs(arc.x()));
-	auto minTimeX = stepsX * kMinStepPeriodX;
+	auto minTimeX = kMinStepPeriodX * stepsX;
 
 	auto stepsY = MotorSteps(abs(arc.y()));
-	auto minTimeY = stepsY * kMinStepPeriodY;
+	auto minTimeY = kMinStepPeriodY * stepsY;
 
 	auto stepsZ = MotorSteps((arc.z()));
-	auto minTimeZ = stepsZ * kMinStepPeriodZ;
+	auto minTimeZ = kMinStepPeriodZ * stepsZ;
 
 	auto minTravelDt = max(minTimeX, max(minTimeY, minTimeZ));
 	auto minTravelMillis = std::chrono::duration_cast<std::chrono::milliseconds>(minTravelDt);

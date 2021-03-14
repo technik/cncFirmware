@@ -61,7 +61,7 @@ void testPositiveMotionX(int32_t steps, std::chrono::milliseconds deadline)
 	}
 	// Move some distance along the X axis
 	const auto targetPos = Vec3<MotorSteps>(steps,0,0);
-	mc.setLinearTarget(targetPos, deadline);
+	mc.setLinearTarget(targetPos);
 	auto t0 = clock::now();
 	while (clock::now() - t0 <= deadline+1ms)
 	{
@@ -85,7 +85,7 @@ void testRoundTripMotion(int32_t steps, std::chrono::milliseconds deadline)
 	}
 	// Move some distance along the X axis
 	const auto targetPos = Vec3<MotorSteps>(steps, 0, 0);
-	mc.setLinearTarget(targetPos, deadline);
+	mc.setLinearTarget(targetPos);
 	auto t0 = clock::now();
 	while (clock::now() - t0 <= deadline + 1ms)
 	{
@@ -96,7 +96,7 @@ void testRoundTripMotion(int32_t steps, std::chrono::milliseconds deadline)
 	auto finalPos = mc.getMotorPositions();
 	assert(targetPos == finalPos);
 	// Retract the traveled distance
-	mc.setLinearTarget(Vec3i(0, 0, 0), deadline);
+	mc.setLinearTarget(Vec3i(0, 0, 0));
 	t0 = clock::now();
 	while (clock::now() - t0 <= deadline + 1ms)
 	{

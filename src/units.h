@@ -201,11 +201,35 @@ struct UnitRatioTag {
 };
 
 using SpeedUnitTag = UnitRatioTag<DistanceUnitTag, TimeUnitTag>;
+using InvSpeedTag = UnitRatioTag<TimeUnitTag, DistanceUnitTag>;
 
 template<class UnitT>
 struct unit_traits
 {
 	using tag = typename UnitT::unit_tag;
+};
+
+template<
+	class Unit1, class Unit2,
+	class Rep1 = typename Unit1::rep, class Period1 = typename Unit1::period,
+	class Rep2 = typename Unit2::rep, class Period2 = typename Unit2::period,
+	class NumTag = typename unit_traits<Unit1>::tag::num, class DenTag = typename unit_traits<Unit2>::tag
+>
+struct unit_mult_traits
+{
+	using ResultRep = decltype(Unit1(0).count()* Unit2(0).count());
+	using ResultPeriod = std::ratio_multiply<Period1, Period2>;
+	using ResultT = Unit<NumTag, ResultRep, ResultPeriod>;
+};
+
+template<class Rep1, class Period1, class Unit2>
+struct unit_mult_traits<Unit<UnitRatioTag<TimeUnitTag,typename unit_traits<Unit2>::tag>,Rep1,Period1>,Unit2>
+{
+	using Rep2 = typename Unit2::rep;
+	using Period2 = typename Unit2::period;
+	using ResultRep = decltype(Rep1(0)* Rep2(0));
+	using ResultPeriod = std::ratio_multiply<Period1, Period2>;
+	using ResultT = std::chrono::duration<ResultRep, ResultPeriod>;
 };
 
 // Unit adaptor to be able to use std::chrono::duration in unit operations
@@ -226,6 +250,9 @@ using Revolutions = Unit<RevolutionUnitTag, Rep, Ratio>;
 // Speed unit (S.I. units), ratio relative to 1 meter/second
 template<class Rep, class Ratio = std::ratio<1>>
 using Speed = Unit<SpeedUnitTag, Rep, Ratio>;
+
+template<class Rep, class Ratio = std::ratio<1>>
+using RevolutionPeriod = Unit<UnitRatioTag<TimeUnitTag, RevolutionUnitTag>, Rep, Ratio>;
 
 // Define common units and literal suffixes
 using micrometers = Distance<long, std::micro>;
@@ -280,9 +307,7 @@ constexpr auto operator*(
 	DivT a,
 	DenT b)
 {
-	using ResultRep = decltype(a.count() * b.count());
-	using ResultPeriod = std::ratio_multiply<Period1, Period2>;
-	return Unit<NumTag, ResultRep, ResultPeriod>(a.count() * b.count());
+	return unit_mult_traits<DivT, DenT>::ResultT(a.count() * b.count());
 }
 
 template< // Num/Mid * Mid/Den -> Num/Den
