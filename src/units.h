@@ -142,6 +142,10 @@ using millimeters = Distance<long, std::milli>;
 using centimeters = Distance<long, std::ratio<1, 100>>;
 using meters = Distance<long>;
 
+using meters_second = Speed<long, std::ratio<1>>;
+using mm_second = Speed<long, std::milli>;
+using mm_millisecond = meters_second;
+
 constexpr auto operator""_um(unsigned long long s) {
 	return micrometers(s);
 }

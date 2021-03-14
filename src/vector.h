@@ -55,6 +55,18 @@ struct Vector
 	Vector(T _x, T _y, T _z) : m{ _x, _y,_z } { static_assert(N > 2); }
 	Vector(T _x, T _y, T _z, T _w) : m{ _x, _y, _w, _w } { static_assert(N > 3); }
 
+	T squareNorm() const {
+		auto res = T(0);
+		for (size_t i = 0; i < N; ++i)
+		{
+			assert(LONG_MAX / m[i] > m[i]); // Prevent overflow
+			assert(LONG_MAX - m[i]*m[i] > res); // Prevent overflow
+			res += m[i] * m[i];
+		}
+	}
+
+	T norm() const { return sqrt(squareNorm()); }
+
 private:
 	T m[N];
 };

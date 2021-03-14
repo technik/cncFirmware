@@ -83,6 +83,10 @@ public:
 					m_state = State::code;
 					instruction.address = c;
 					break;
+
+				case 'D': // Debug
+					gMotionController.printState();
+					break;
 				default:
 					signalError();
 					return;

@@ -34,7 +34,7 @@ constexpr auto operator""_steps(unsigned long long s) {
 }
 
 constexpr auto kSteps_mmX = MotorSteps(1_rev) / 8_mm;
-constexpr auto kSteps_mmY = MotorSteps(int32_t(200 * 16 / (13 * 2 * 3.14159f))) / 1_mm;
+constexpr auto kSteps_mmY = MotorSteps(int32_t(200 * 16 / 38.f + 0.5)) / 1_mm;
 constexpr auto kSteps_mmZ = MotorSteps(1_rev) / 8_mm;
 /*
 constexpr int32_t XstepsPerMM = 200 * 16 / 2;
@@ -42,5 +42,13 @@ constexpr int32_t YstepsPerMM = int32_t(microStepsPerRevolution / (13 * 2 * 3.14
 constexpr int32_t ZstepsPerMM = 200 * 16 / 2;
 */
 constexpr auto kMaxSpeedX = 10_mm / 1s; // mm/s
-constexpr auto kMaxStepsX = kMaxSpeedX * kSteps_mmX;
-constexpr auto kMinPeriodX = std::chrono::microseconds(int32_t(1'000'000.f / kMaxStepsX.count() + 0.5f)); // mm/s
+constexpr auto kMaxSpeedY = 50_mm / 1s; // mm/s
+constexpr auto kMaxSpeedZ = 10_mm / 1s; // mm/s
+
+constexpr auto kMaxSteps_secX = kMaxSpeedX * kSteps_mmX;
+constexpr auto kMaxSteps_secY = kMaxSpeedY * kSteps_mmY;
+constexpr auto kMaxSteps_secZ = kMaxSpeedZ * kSteps_mmZ;
+
+constexpr auto kMinStepPeriodX = std::chrono::microseconds(int32_t(1'000'000.f / kMaxSteps_secX.count() + 0.5f)); // us/step
+constexpr auto kMinStepPeriodY = std::chrono::microseconds(int32_t(1'000'000.f / kMaxSteps_secY.count() + 0.5f)); // us/step
+constexpr auto kMinStepPeriodZ = std::chrono::microseconds(int32_t(1'000'000.f / kMaxSteps_secZ.count() + 0.5f)); // us/step
