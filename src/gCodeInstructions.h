@@ -25,7 +25,6 @@ template<class MotionController>
 void G1_linearMove(MotionController& motionController, const GCodeOperation& op)
 {
 	auto targetPos = motionController.getMotorPositions();
-	auto srcPos = targetPos;
 	if (op.argument[0] != MotionController::kUnknownPos)
 		targetPos.x() = MotorSteps(op.argument[0] * kSteps_mmX.count());
 

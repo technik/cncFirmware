@@ -307,7 +307,7 @@ constexpr auto operator*(
 	DivT a,
 	DenT b)
 {
-	return unit_mult_traits<DivT, DenT>::ResultT(a.count() * b.count());
+	return typename unit_mult_traits<DivT, DenT>::ResultT(a.count() * b.count());
 }
 
 template< // Num/Mid * Mid/Den -> Num/Den

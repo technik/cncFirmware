@@ -43,9 +43,9 @@ constexpr int32_t XstepsPerMM = 200 * 16 / 2;
 constexpr int32_t YstepsPerMM = int32_t(microStepsPerRevolution / (13 * 2 * 3.14159f));
 constexpr int32_t ZstepsPerMM = 200 * 16 / 2;
 */
-constexpr auto kMaxSpeedX = 10_mm / 1s; // mm/s
+constexpr auto kMaxSpeedX = 5_mm / 1s; // mm/s
 constexpr auto kMaxSpeedY = 50_mm / 1s; // mm/s
-constexpr auto kMaxSpeedZ = 10_mm / 1s; // mm/s
+constexpr auto kMaxSpeedZ = 5_mm / 1s; // mm/s
 
 constexpr auto kMaxSteps_secX = kMaxSpeedX * kSteps_mmX;
 constexpr auto kMaxSteps_secY = kMaxSpeedY * kSteps_mmY;
